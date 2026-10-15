@@ -1,0 +1,5 @@
+# built zips (bun run build:extension <key>)
+*/dist
+node_modules
+.DS_Store
+test-results
