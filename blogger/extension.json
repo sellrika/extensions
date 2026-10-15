@@ -1,0 +1,22 @@
+{
+	"key": "blogger",
+	"name": "name",
+	"version": "1.0.0",
+	"description": "description",
+	"icon": "assets/icon.svg",
+	"main": "index.ts",
+	"fields": [],
+	"pages": [
+		{
+			"path": "posts",
+			"title": "page.posts",
+			"script": "assets/blog.tsx",
+			"admin": false,
+			"centered": true,
+			"group": "Sales"
+		}
+	],
+	"slots": [],
+	"storefront": { "path": "blogs" },
+	"guide": "guide.md"
+}

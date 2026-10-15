@@ -1,0 +1,79 @@
+name: Build extensions
+
+# Builds every extension of this repo into a zip and puts it on a release,
+# so a self-hosted Sellrika can import it by link
+# (Admin › Global Extensions › Import from URL).
+#
+# Two links per extension:
+#   the newest build   …/releases/download/latest/<key>.zip
+#   one fixed version  …/releases/download/<key>-v<version>/<key>-<version>.zip
+#
+# A version is released once. To release a change, raise "version" in the
+# extension's extension.json. The "latest" link is replaced on every push.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # also by hand, from the Actions page
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # The app: its build script packs an extension, and its types check one.
+      # That repo is public: no key is needed.
+      - uses: actions/checkout@v4
+        with:
+          repository: sellrika/sellrika
+      # This repo, as the app's custom-extensions/ folder.
+      - uses: actions/checkout@v4
+        with:
+          path: custom-extensions
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - name: Type check
+        run: bun check
+      - name: Unit tests
+        run: bun test --path-ignore-patterns='**/e2e/**' ./custom-extensions
+      - name: Build the zips
+        run: |
+          mkdir -p out
+          for manifest in custom-extensions/*/extension.json; do
+            key=$(basename "$(dirname "$manifest")")
+            bun extensions/build.ts "$key"
+            cp custom-extensions/"$key"/dist/*.zip out/
+          done
+          ls -l out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extensions
+          path: out/*.zip
+      - name: Release
+        if: github.event_name != 'pull_request'
+        working-directory: custom-extensions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # the rolling release behind the "newest build" links
+          gh release view latest >/dev/null 2>&1 ||
+            gh release create latest --title "Latest builds" \
+              --notes "The newest build of every extension. Replaced on every push to main."
+          for zip in ../out/*.zip; do
+            file=$(basename "$zip" .zip)   # blogger-1.0.0
+            key=${file%-*}                 # blogger
+            version=${file##*-}            # 1.0.0
+            cp "$zip" "$key.zip"
+            gh release upload latest "$key.zip" --clobber
+            tag="$key-v$version"
+            if gh release view "$tag" >/dev/null 2>&1; then
+              echo "$tag is already released: raise the version to release a change"
+            else
+              gh release create "$tag" "$zip" --target "$GITHUB_SHA" \
+                --title "$key $version" --notes "Build of $key, version $version."
+            fi
+          done
