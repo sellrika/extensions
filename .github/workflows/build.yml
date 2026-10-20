@@ -25,11 +25,26 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      # A pull request may need app changes that are not on main yet.
+      # Then the app has a branch with the same name: use it. Else main.
+      - name: Pick the app branch
+        id: app
+        # an env var, never ${{ }} in the script: a branch name is not trusted
+        env:
+          branch: ${{ github.head_ref }}
+        run: |
+          ref=main
+          if [ -n "$branch" ] && git ls-remote --exit-code --heads https://github.com/sellrika/sellrika "$branch" >/dev/null; then
+            ref="$branch"
+          fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "App branch: $ref"
       # The app: its build script packs an extension, and its types check one.
       # That repo is public: no key is needed.
       - uses: actions/checkout@v4
         with:
           repository: sellrika/sellrika
+          ref: ${{ steps.app.outputs.ref }}
       # This repo, as the app's custom-extensions/ folder.
       - uses: actions/checkout@v4
         with:
