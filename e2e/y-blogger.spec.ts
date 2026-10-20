@@ -93,8 +93,17 @@ test("write a post with a thumbnail, a picture in the body and a tag; a draft an
 	expect(await around()).toEqual(["one", "two"]);
 	// the picture tools: its width, its side, its place, its description and a caption
 	await picture.click();
-	await admin.getByLabel("Width").fill("50");
-	await expect(picture).toHaveAttribute("style", /width: 50%/);
+	// drag the bottom-right corner to the middle of the text: about half the width
+	const box = (await figure.boundingBox())!;
+	const corner = (await admin
+		.locator('[data-slot="image-resize"]')
+		.last()
+		.boundingBox())!;
+	await admin.mouse.move(corner.x + corner.width / 2, corner.y + corner.height / 2);
+	await admin.mouse.down();
+	await admin.mouse.move(box.x + box.width / 2, corner.y + corner.height / 2, { steps: 5 });
+	await admin.mouse.up();
+	await expect(picture).toHaveAttribute("style", /width: (4\d|5\d)%/);
 	await admin.getByRole("button", { name: "Picture in the middle" }).click();
 	await expect(figure).toHaveAttribute("style", /text-align: center/);
 	await admin.getByRole("button", { name: "Move picture up" }).click();
@@ -155,7 +164,7 @@ test("publish: the post is on the store with its head tags, picture, tag, menu l
 	const picture = visitor.locator(".blg-body img");
 	await expect(picture).toHaveAttribute("alt", "A coffee grinder");
 	// the width and the side picked in the editor hold on the store
-	await expect(picture).toHaveAttribute("style", /width: 50%/);
+	await expect(picture).toHaveAttribute("style", /width: (4\d|5\d)%/);
 	await expect(visitor.locator(".blg-body figure")).toHaveAttribute(
 		"style",
 		/text-align: center/,
@@ -186,10 +195,13 @@ test("publish: the post is on the store with its head tags, picture, tag, menu l
 		"href",
 		new RegExp(`sharer\\.php\\?u=.*blogs%2F${SLUG}`),
 	);
-	// the theme's own frame is around it
+	// the blog builds the whole page itself: its own header leads to the store, no theme around it
+	await expect(
+		visitor.locator(".blg-site").getByRole("link", { name: "Main Shop" }),
+	).toHaveAttribute("href", STORE);
 	await expect(
 		visitor.getByRole("button", { name: "Open cart" }),
-	).toBeVisible();
+	).toHaveCount(0);
 
 	// the tag leads to its own list; an unknown tag is not there
 	await visitor.getByRole("link", { name: "Coffee", exact: true }).click();

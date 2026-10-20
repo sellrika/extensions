@@ -1,9 +1,9 @@
 /**
  * The HTML of the blog's two store pages: the list and one post.
- * Each is a whole page between the theme's header and footer
- * (`ctx.storefront.page({ frame: "full" })`). The app cleans it again,
- * so only plain tags and classes are used: no script, no SVG.
- * Colours and fonts are the theme's own CSS variables.
+ * Each is a whole page the blog builds by itself (`pageHtml`), with no
+ * theme around it (`ctx.storefront.page({ html })`). The app does not
+ * clean it: every text is escaped here, and a post's body was cleaned
+ * when it was saved.
  */
 import type { Translate } from "@extensions/types";
 import { BLOG_PATH, slugify, type Meta, type Post } from "../assets/posts.ts";
@@ -30,6 +30,53 @@ export function esc(text: string): string {
 		.replace(/>/g, "&gt;")
 		.replace(/"/g, "&quot;");
 }
+
+/** What `pageHtml` puts around a page's body. */
+export type Frame = {
+	/** The page's language, for `<html lang>`. */
+	lang: string;
+	/** The page's title, without the shop's name. */
+	title: string;
+	/** The description for search engines and shared links. */
+	description: string;
+	/** The page's full address. */
+	url: string;
+	/** The picture of a shared link: a full address, or null. */
+	image: string | null;
+	/** The shop's name. */
+	shop: string;
+	/** The address of the shop's online store. */
+	home: string;
+	/** The blog's name, for the header's link to the blog. */
+	blog: string;
+};
+
+/**
+ * The whole document of a store page: the head tags, a small header
+ * that leads back to the store, the body and a footer.
+ * @param frame What goes around the body.
+ * @param body The page's HTML.
+ * @returns The HTML document.
+ */
+export function pageHtml(frame: Frame, body: string): string {
+	const title = esc(`${frame.title} · ${frame.shop}`);
+	const image = frame.image
+		? `<meta property="og:image" content="${esc(frame.image)}">`
+		: "";
+	return `<!doctype html><html lang="${esc(frame.lang)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title><meta name="description" content="${esc(frame.description)}"><link rel="canonical" href="${esc(frame.url)}"><meta property="og:type" content="article"><meta property="og:title" content="${title}"><meta property="og:description" content="${esc(frame.description)}"><meta property="og:url" content="${esc(frame.url)}">${image}<style>${PAGE_CSS}${BLOG_CSS}</style></head><body><header class="blg-site"><a class="blg-site-name" href="${esc(frame.home)}">${esc(frame.shop)}</a><a class="blg-site-link" href="${BLOG_PATH}">${esc(frame.blog)}</a></header><main class="blg-main">${body}</main><footer class="blg-site blg-site-foot">© ${new Date().getFullYear()} ${esc(frame.shop)}</footer></body></html>`;
+}
+
+/** The page's own frame: the font, the width, the header and the footer. */
+const PAGE_CSS = `
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#1c1c1c;background:#fff;-webkit-font-smoothing:antialiased}
+.blg-site{display:flex;align-items:center;justify-content:space-between;gap:1rem;max-width:72rem;margin:0 auto;padding:1.25rem 1.5rem;border-bottom:1px solid #eee}
+.blg-site a{color:inherit;text-decoration:none}
+.blg-site-name{font-weight:600;font-size:1.1rem}
+.blg-site-link{font-size:.95rem;color:#666}
+.blg-site-foot{border-bottom:0;border-top:1px solid #eee;font-size:.85rem;color:#666}
+.blg-main{max-width:72rem;margin:0 auto;padding:2.5rem 1.5rem 4rem}
+`;
 
 /**
  * The address of a tag's page.
@@ -301,13 +348,12 @@ const ICONS = {
 
 /**
  * The stylesheet of both pages.
- * Every colour is one of the theme's own variables, so the blog fits
- * each theme, light or dark. The fallbacks are for a theme without them.
+ * The page has no theme, so the colours are the blog's own.
  * A body pasted from another page may carry that page's colours and
- * fonts as inline styles: they are switched off, the theme's own show.
+ * fonts as inline styles: they are switched off, the blog's own show.
  */
 export const BLOG_CSS = `
-.blg{--blg-fg:var(--store-fg,currentColor);--blg-bg:var(--store-bg,#fff);--blg-muted:var(--store-muted,color-mix(in srgb,currentColor 60%,transparent));--blg-line:var(--store-line,color-mix(in srgb,currentColor 14%,transparent));--blg-soft:var(--store-surface,color-mix(in srgb,currentColor 7%,transparent));--blg-accent:color-mix(in srgb,var(--store-accent,currentColor) 75%,var(--blg-fg));--blg-radius:var(--store-radius,.6rem);--blg-heading:var(--store-font-heading,inherit);display:block;color:var(--blg-fg)}
+.blg{--blg-fg:#1c1c1c;--blg-bg:#fff;--blg-muted:#6b6b6b;--blg-line:#e4e4e4;--blg-soft:#f4f4f4;--blg-accent:#1c1c1c;--blg-radius:.6rem;--blg-heading:inherit;display:block;color:var(--blg-fg)}
 .blg a{text-decoration:none;color:inherit}
 .blg-head{margin:0 0 2rem}
 .blg-h1{font-family:var(--blg-heading);font-size:clamp(2.2rem,5vw,3rem);font-weight:600;line-height:1.1;letter-spacing:-.02em;margin:0}

@@ -30,7 +30,7 @@ import {
 	type Post,
 	type PostInput,
 } from "./assets/posts.ts";
-import { BLOG_CSS, listHtml, postHtml, type Look } from "./lib/render.ts";
+import { listHtml, pageHtml, postHtml, postPath, type Frame, type Look } from "./lib/render.ts";
 
 /** The name of the list that holds the posts, one record each. */
 const POSTS = "posts";
@@ -213,7 +213,7 @@ function lookOf(ctx: RouteContext): Look {
  * The blog's list page: every live post, or the ones of a tag.
  * @param ctx The route's context.
  * @param tag The tag's slug, "" for all posts.
- * @returns The themed page, or 404 for a tag no live post has.
+ * @returns The page, or 404 for a tag no live post has.
  */
 async function listPage(ctx: RouteContext, tag: string) {
 	if (!ctx.storefront) return gone();
@@ -232,10 +232,7 @@ async function listPage(ctx: RouteContext, tag: string) {
 	const title = name
 		? ctx.t("store.tag_title", { tag: name })
 		: ctx.t("store.title");
-	return ctx.storefront.page({
-		frame: "full",
-		title,
-		body: listHtml(
+	const body = listHtml(
 			{
 				title,
 				intro: ctx.t("store.intro"),
@@ -246,11 +243,31 @@ async function listPage(ctx: RouteContext, tag: string) {
 				last,
 			},
 			lookOf(ctx),
-		),
-		css: BLOG_CSS,
-		description: ctx.t("store.description", { shop: ctx.shop.name }),
-		canonical: page > 1 ? `${base}?page=${page}` : base,
-	});
+		);
+	const path = page > 1 ? `${base}?page=${page}` : base;
+	const frame = frameOf(ctx, title, path);
+	frame.description = ctx.t("store.description", { shop: ctx.shop.name });
+	return ctx.storefront.page({ html: pageHtml(frame, body) });
+}
+
+/**
+ * What goes around a store page of the blog.
+ * @param ctx The route's context.
+ * @param title The page's title.
+ * @param path The page's path in the store.
+ * @returns The frame for `pageHtml`.
+ */
+function frameOf(ctx: RouteContext, title: string, path: string): Frame {
+	return {
+		lang: ctx.locale,
+		title,
+		description: "",
+		url: `${ctx.store_url}${path}`,
+		image: null,
+		shop: ctx.shop.name,
+		home: ctx.store_url,
+		blog: ctx.t("store.title"),
+	};
 }
 
 /**
@@ -275,19 +292,15 @@ export const publicRoutes: Routes = {
 		const more = livePosts(index, now)
 			.filter((one) => one.id !== post.id)
 			.slice(0, MORE_POSTS);
-		return ctx.storefront.page({
-			frame: "full",
-			title: post.title,
-			body: postHtml(
-				post,
-				more,
-				`${ctx.store_url}${BLOG_PATH}/${encodeURIComponent(post.slug)}`,
-				lookOf(ctx),
-			),
-			css: BLOG_CSS,
-			description: post.summary || undefined,
-			image: post.cover,
-		});
+		const frame = frameOf(ctx, post.title, postPath(post));
+		frame.description =
+			post.summary || ctx.t("store.description", { shop: ctx.shop.name });
+		// an upload path is made a full address; an https link stays
+		frame.image = post.cover?.startsWith("/")
+			? `${ctx.store_url}${post.cover}`
+			: post.cover;
+		const body = postHtml(post, more, frame.url, lookOf(ctx));
+		return ctx.storefront.page({ html: pageHtml(frame, body) });
 	},
 };
 
