@@ -217,7 +217,7 @@ export async function showList(s: State) {
 	renderRows(v);
 	s.root.replaceChildren(
 		api.actions ? "" : <div class="blg-top">{actions}</div>,
-		<div class="blg-card">
+		<div class="blg-list">
 			<div class="blg-bar">
 				{v.tabs}
 				<div class="blg-bar-end">

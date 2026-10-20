@@ -204,7 +204,10 @@ test("publish: the post is on the store with its head tags, picture, tag, menu l
 	).toHaveCount(0);
 
 	// the tag leads to its own list; an unknown tag is not there
-	await visitor.getByRole("link", { name: "Coffee", exact: true }).click();
+	await visitor
+		.locator(".blg-tags")
+		.getByRole("link", { name: /Coffee/ })
+		.click();
 	await expect(visitor).toHaveURL(`${STORE}/blogs/tag/coffee`);
 	await expect(
 		visitor.getByRole("heading", { name: "Posts tagged Coffee" }),
@@ -278,4 +281,101 @@ test("the list filters by status and tag; back to draft hides the post; delete r
 	await admin.getByRole("button", { name: "Delete", exact: true }).click();
 	await expect(admin.getByText("Post deleted.").last()).toBeVisible();
 	await expect(row).toHaveCount(0);
+});
+
+/**
+ * Make an API key on Settings › MCP & API keys.
+ * @param role The key's role, as its button starts.
+ * @returns The new key.
+ */
+async function apiKey(role: "Manager" | "Cashier"): Promise<string> {
+	await admin.goto("/api-keys");
+	await admin.getByRole("button", { name: "Create key" }).click();
+	const dialog = admin.getByRole("dialog");
+	await dialog.getByLabel("Name").fill(`Blog ${role} ${run}`);
+	await dialog.getByRole("button", { name: new RegExp(`^${role}`) }).click();
+	await dialog.getByRole("button", { name: "Create key" }).click();
+	const box = dialog.getByRole("textbox", { name: "Your new key" });
+	await expect(box).toHaveValue(/^srk_/);
+	const key = await box.inputValue();
+	await dialog.getByRole("button", { name: "Done" }).click();
+	return key;
+}
+
+test("an AI assistant reads and writes posts through the MCP server", async () => {
+	const key = await apiKey("Manager");
+	const rpc = async (method: string, params = {}) =>
+		(
+			await (
+				await admin.request.post("/mcp", {
+					headers: { "X-API-Key": key },
+					data: { jsonrpc: "2.0", id: 1, method, params },
+				})
+			).json()
+		).result;
+	const call = async (name: string, args: Record<string, unknown>) => {
+		const result = await rpc("tools/call", { name, arguments: args });
+		return { error: result.isError, data: JSON.parse(result.content[0].text) };
+	};
+	const names = (await rpc("tools/list")).tools.map(
+		(tool: { name: string }) => tool.name,
+	);
+	for (const tool of ["list", "get", "create", "update", "delete"])
+		expect(names).toContain(
+			`blogger_${tool === "list" ? "list_posts" : `${tool}_post`}`,
+		);
+
+	// write a draft, then change only its title: the body stays
+	const made = await call("blogger_create_post", {
+		title: `Written by AI ${run}`,
+		status: "draft",
+		summary: "From an assistant",
+		body: "<p>Kept body</p><script>bad()</script>",
+		tags: ["AI"],
+	});
+	expect(made.error).toBe(false);
+	expect(made.data.body).toBe("<p>Kept body</p>");
+	const changed = await call("blogger_update_post", {
+		id: made.data.id,
+		title: `Renamed ${run}`,
+	});
+	expect(changed.error).toBe(false);
+	const read = await call("blogger_get_post", { id: made.data.id });
+	expect(read.data).toMatchObject({
+		title: `Renamed ${run}`,
+		body: "<p>Kept body</p>",
+		status: "draft",
+		tags: ["AI"],
+	});
+	const list = await call("blogger_list_posts", {});
+	expect(
+		list.data.posts.some((one: { id: number }) => one.id === made.data.id),
+	).toBe(true);
+	// a refused value comes back as an error the assistant can read
+	const bad = await call("blogger_update_post", {
+		id: made.data.id,
+		status: "maybe",
+	});
+	expect(bad.error).toBe(true);
+
+	expect((await call("blogger_delete_post", { id: made.data.id })).error).toBe(
+		false,
+	);
+	expect((await call("blogger_get_post", { id: made.data.id })).error).toBe(
+		true,
+	);
+
+	// a cashier's key does not even see the blog tools
+	const cashier = await apiKey("Cashier");
+	const seen = await (
+		await admin.request.post("/mcp", {
+			headers: { "X-API-Key": cashier },
+			data: { jsonrpc: "2.0", id: 1, method: "tools/list", params: {} },
+		})
+	).json();
+	expect(
+		seen.result.tools.some((tool: { name: string }) =>
+			tool.name.startsWith("blogger_"),
+		),
+	).toBe(false);
 });

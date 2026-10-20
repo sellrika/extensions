@@ -43,8 +43,16 @@ To hide a post again, set **Status** to **Draft** and save.
 
 - A **Blog** link shows in the store's menu once one post is live.
 - Live posts are in the store's `sitemap.xml`.
+- The 20 newest live posts are in the RSS feed, `<store address>/blogs/feed.xml`. Feed readers and AI search use it to find new posts. The footer of the blog links to it.
 - Each post has its own title, description and share picture. The **Summary** is the description.
 
 ## Delete a post
 
 Press the bin on its row and confirm. The post and its pictures are removed.
+
+## For AI assistants
+
+- With a manager or admin key, the MCP server has five blog tools: `blogger_list_posts`, `blogger_get_post`, `blogger_create_post`, `blogger_update_post` and `blogger_delete_post`.
+- Write a new post as a `draft` first, so a person can check it. Then set `status` to `published`.
+- `blogger_update_post` changes only the fields you send. The others keep their value.
+- A picture must already be uploaded to the shop. A tool cannot upload one.

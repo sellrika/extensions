@@ -1,5 +1,13 @@
 import { expect, test } from "bun:test";
-import { listHtml, postHtml } from "../lib/render.ts";
+import {
+	type Frame,
+	listData,
+	listHtml,
+	pageHtml,
+	postData,
+	postHtml,
+} from "../lib/render.ts";
+import { feedXml } from "../lib/feed.ts";
 import {
 	checkPost,
 	cleanTags,
@@ -208,7 +216,13 @@ test("the store pages escape what a person typed and link posts, tags and pages"
 		tags: ["R&D"],
 		cover: "/uploads/3/extensions/c.webp",
 	});
-	const frame = { title: "Blog", intro: "From the shop", tags: ["R&D"] };
+	const frame = {
+		title: "Blog",
+		intro: "From the shop",
+		tags: ["R&D"],
+		counts: { "r-d": 1 },
+		total: 2,
+	};
 	const first = listHtml(
 		{
 			...frame,
@@ -229,6 +243,10 @@ test("the store pages escape what a person typed and link posts, tags and pages"
 		'<article class="blg-feat"><a class="blg-feat-link" href="/blogs/a%20b"',
 	);
 	expect(first.match(/class="blg-card"/g)).toHaveLength(1);
+	// the topic tabs carry their number of posts
+	expect(first).toContain(
+		'<a class="blg-tab" href="/blogs/tag/r-d">R&amp;D<small>1</small></a>',
+	);
 	// page 1 of 3: no way back, the numbers, on to the second
 	expect(first).not.toContain('rel="prev"');
 	expect(first).toContain(
@@ -257,6 +275,7 @@ test("the store pages escape what a person typed and link posts, tags and pages"
 		post,
 		[meta({ id: 9, slug: "next", title: "Next" })],
 		"https://shop.test/blogs/a%20b",
+		"Main Shop",
 		look,
 	);
 	expect(page).toContain(
@@ -264,11 +283,109 @@ test("the store pages escape what a person typed and link posts, tags and pages"
 	);
 	expect(page).toContain("<p>Body text</p>");
 	expect(page).toContain("&quot;quoted&quot; &amp; &lt;b&gt;");
-	expect(page).toContain('<a class="blg-back" href="/blogs">');
-	expect(page).toContain('class="blg-mini" href="/blogs/next"');
+	expect(page).toContain(
+		'<a class="blg-back" href="/blogs" aria-label="store.back">',
+	);
+	// the posts to read next, and the shop as the author
+	expect(page).toContain('class="blg-card-link" href="/blogs/next"');
+	expect(page).toContain('<span class="blg-avatar" aria-hidden="true">MS</span>');
 	// the share links carry the post's full address, encoded
 	expect(page).toContain(
 		"https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fshop.test%2Fblogs%2Fa%2520b",
 	);
 	expect(metaOf(post)).not.toHaveProperty("body");
+});
+
+test("a post page tells search engines and AI search what it is", () => {
+	const post: Post = {
+		...meta({
+			title: "Brew </script><script>x()</script>",
+			slug: "brew",
+			summary: "Better coffee",
+			tags: ["Coffee", "Guides"],
+		}),
+		body: "<p>Text</p>",
+	};
+	const frame: Frame = {
+		lang: "en",
+		title: post.title,
+		description: post.summary,
+		url: "https://shop.test/blogs/brew",
+		image: "https://shop.test/uploads/1/a.webp",
+		shop: "Main Shop",
+		home: "https://shop.test",
+		t: (key: string) => key,
+		type: "article",
+		logo: null,
+		data: [],
+		article: {
+			published: post.published_at,
+			modified: post.updated_at,
+			tags: post.tags,
+		},
+	};
+	frame.data = postData(frame, post, "https://shop.test/blogs");
+	const html = pageHtml(frame, "");
+	// the structured data parses, and no title can close its script tag
+	const scripts = [
+		...html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/g),
+	].map((m) => JSON.parse(m[1] ?? ""));
+	expect(scripts.map((one) => one["@type"])).toEqual([
+		"BlogPosting",
+		"BreadcrumbList",
+	]);
+	expect(scripts[0].headline).toBe(post.title);
+	expect(scripts[0].author.name).toBe("Main Shop");
+	expect(scripts[0].keywords).toBe("Coffee, Guides");
+	expect(scripts[1].itemListElement).toHaveLength(3);
+	expect(html).not.toContain("<script>x()");
+	// the head tags of an article
+	expect(html).toContain('<meta property="og:type" content="article">');
+	expect(html).toContain('<meta name="twitter:card" content="summary_large_image">');
+	expect(html).toContain('<meta property="article:tag" content="Guides">');
+	expect(html).toContain("max-image-preview:large");
+	// a list names its posts with their full addresses
+	const list = listData(
+		{ ...frame, type: "website", url: "https://shop.test/blogs" },
+		[post],
+		"https://shop.test/blogs",
+		() => null,
+	);
+	expect((list[0] as { blogPost: { url: string }[] }).blogPost[0]?.url).toBe(
+		"https://shop.test/blogs/brew",
+	);
+});
+
+test("the feed carries whole posts with full addresses, and nothing can break its XML", () => {
+	const post: Post = {
+		...meta({
+			title: "Tea & <cake>",
+			slug: "tea",
+			summary: "A summary",
+			tags: ["Recipes"],
+			cover: "/uploads/1/c.webp",
+		}),
+		body: '<p>Hi ]]> there</p><img src="/uploads/1/a.webp"><a href="//evil.test">x</a>',
+	};
+	const xml = feedXml(
+		{
+			title: "Blog · Main Shop",
+			description: "News",
+			home: "https://shop.test",
+			lang: "en",
+		},
+		[post],
+	);
+	expect(xml).toContain("<title>Tea &amp; &lt;cake&gt;</title>");
+	expect(xml).toContain("<link>https://shop.test/blogs/tea</link>");
+	expect(xml).toContain("<category>Recipes</category>");
+	expect(xml).toContain(
+		'<atom:link href="https://shop.test/blogs/feed.xml" rel="self"',
+	);
+	// pictures get the store's address; a link to another site stays as it is
+	expect(xml).toContain('src="https://shop.test/uploads/1/a.webp"');
+	expect(xml).toContain('src="https://shop.test/uploads/1/c.webp"');
+	expect(xml).toContain('href="//evil.test"');
+	// a "]]>" in the body does not end the CDATA block early
+	expect(xml).toContain("Hi ]]]]><![CDATA[> there");
 });
