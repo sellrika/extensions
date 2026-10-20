@@ -189,7 +189,7 @@ test("publish: the post is on the store with its head tags, picture, tag, menu l
 	// the post's own back link leads to the blog, not to the shop
 	await expect(
 		visitor.getByRole("link", { name: "Back to blog" }),
-	).toHaveAttribute("href", "/blogs");
+	).toHaveAttribute("href", `${STORE}/blogs`);
 	// share links, with the post's own address
 	await expect(visitor.getByRole("link", { name: "Facebook" })).toHaveAttribute(
 		"href",

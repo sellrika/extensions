@@ -108,13 +108,17 @@ export default {
 	"store.all_posts": "Alle Beiträge",
 	"store.rss": "RSS-Feed",
 	"tool.list": "Blogbeiträge auflisten",
-	"tool.list_description": "Alle Beiträge des Shop-Blogs, die neuesten zuerst, ohne Text: id, Titel, Link, Zusammenfassung, Titelbild, Tags, Status, Veröffentlichung, letzte Änderung und Lesezeit. Dazu die verwendeten Tags und die Adresse des Blogs.",
+	"tool.list_description":
+		"Alle Beiträge des Shop-Blogs, die neuesten zuerst, ohne Text: id, Titel, Link, Zusammenfassung, Titelbild, Tags, Status, Veröffentlichung, letzte Änderung und Lesezeit. Dazu die verwendeten Tags und die Adresse des Blogs.",
 	"tool.get": "Einen Blogbeitrag lesen",
 	"tool.get_description": "Ein Beitrag mit seinem ganzen Text (HTML).",
 	"tool.create": "Einen neuen Blogbeitrag schreiben",
-	"tool.create_description": "Einen Beitrag zum Blog des Shops hinzufügen. Mit dem Status draft prüft ihn zuerst eine Person. Ein veröffentlichter Beitrag steht im Onlineshop, in seiner Sitemap und seinem RSS-Feed.",
+	"tool.create_description":
+		"Einen Beitrag zum Blog des Shops hinzufügen. Mit dem Status draft prüft ihn zuerst eine Person. Ein veröffentlichter Beitrag steht im Onlineshop, in seiner Sitemap und seinem RSS-Feed.",
 	"tool.update": "Einen Blogbeitrag ändern",
-	"tool.update_description": "Einen Beitrag ändern. Nur die zu ändernden Felder senden: die anderen behalten ihren Wert. Mit dem Status published wird ein Entwurf veröffentlicht.",
+	"tool.update_description":
+		"Einen Beitrag ändern. Nur die zu ändernden Felder senden: die anderen behalten ihren Wert. Mit dem Status published wird ein Entwurf veröffentlicht.",
 	"tool.delete": "Einen Blogbeitrag löschen",
-	"tool.delete_description": "Einen Beitrag endgültig löschen. Seine Bilder werden entfernt, wenn nichts anderes sie nutzt.",
+	"tool.delete_description":
+		"Einen Beitrag endgültig löschen. Seine Bilder werden entfernt, wenn nichts anderes sie nutzt.",
 };
