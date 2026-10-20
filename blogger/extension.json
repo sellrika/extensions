@@ -1,0 +1,178 @@
+{
+	"key": "blogger",
+	"name": "name",
+	"version": "1.0.0",
+	"description": "description",
+	"icon": "assets/icon.svg",
+	"main": "index.ts",
+	"fields": [],
+	"pages": [
+		{
+			"path": "posts",
+			"title": "page.posts",
+			"script": "assets/blog.tsx",
+			"admin": false,
+			"centered": true,
+			"group": "Sales"
+		}
+	],
+	"slots": [],
+	"storefront": {
+		"path": "blogs"
+	},
+	"guide": "guide.md",
+	"tools": [
+		{
+			"name": "list_posts",
+			"summary": "tool.list",
+			"description": "tool.list_description",
+			"route": "GET /posts",
+			"role": "manager"
+		},
+		{
+			"name": "get_post",
+			"summary": "tool.get",
+			"description": "tool.get_description",
+			"route": "GET /posts/:id",
+			"role": "manager",
+			"input": {
+				"id": {
+					"type": "integer",
+					"description": "The post's id, from blogger_list_posts."
+				}
+			},
+			"required": [
+				"id"
+			]
+		},
+		{
+			"name": "create_post",
+			"summary": "tool.create",
+			"description": "tool.create_description",
+			"route": "POST /posts",
+			"role": "manager",
+			"input": {
+				"title": {
+					"type": "string",
+					"description": "The post's title. At most 200 characters."
+				},
+				"slug": {
+					"type": "string",
+					"description": "The post's link name: lower-case letters, digits and dashes, like \"autumn-candles\". Left out on a new post = made from the title."
+				},
+				"summary": {
+					"type": "string",
+					"description": "One or two sentences, at most 300 characters. Shown on the list and used as the description for search engines and shared links."
+				},
+				"body": {
+					"type": "string",
+					"description": "The post's text as HTML: p, h2, h3, ul, ol, li, a, strong, em, blockquote, figure, figcaption, img, table. Scripts and styles are removed. A picture must be a /uploads/… path of this shop or an https link; picture data is refused."
+				},
+				"tags": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"description": "Topics, like [\"Coffee\", \"Guides\"]. At most 10, each at most 30 characters."
+				},
+				"status": {
+					"type": "string",
+					"enum": [
+						"draft",
+						"published"
+					],
+					"description": "draft = only staff see it. published = it shows on the online store from published_at on."
+				},
+				"published_at": {
+					"type": "string",
+					"description": "When the post goes live, as an ISO date and time (2026-10-20T09:00:00Z). A later time schedules it. Left out on a published post = now."
+				},
+				"cover": {
+					"type": [
+						"string",
+						"null"
+					],
+					"description": "The thumbnail: a /uploads/<shop id>/… path of a picture already uploaded to this shop, or null for none."
+				}
+			},
+			"required": [
+				"title",
+				"status"
+			]
+		},
+		{
+			"name": "update_post",
+			"summary": "tool.update",
+			"description": "tool.update_description",
+			"route": "PUT /posts/:id",
+			"role": "manager",
+			"input": {
+				"id": {
+					"type": "integer",
+					"description": "The post's id, from blogger_list_posts."
+				},
+				"title": {
+					"type": "string",
+					"description": "The post's title. At most 200 characters."
+				},
+				"slug": {
+					"type": "string",
+					"description": "The post's link name: lower-case letters, digits and dashes, like \"autumn-candles\". Left out on a new post = made from the title."
+				},
+				"summary": {
+					"type": "string",
+					"description": "One or two sentences, at most 300 characters. Shown on the list and used as the description for search engines and shared links."
+				},
+				"body": {
+					"type": "string",
+					"description": "The post's text as HTML: p, h2, h3, ul, ol, li, a, strong, em, blockquote, figure, figcaption, img, table. Scripts and styles are removed. A picture must be a /uploads/… path of this shop or an https link; picture data is refused."
+				},
+				"tags": {
+					"type": "array",
+					"items": {
+						"type": "string"
+					},
+					"description": "Topics, like [\"Coffee\", \"Guides\"]. At most 10, each at most 30 characters."
+				},
+				"status": {
+					"type": "string",
+					"enum": [
+						"draft",
+						"published"
+					],
+					"description": "draft = only staff see it. published = it shows on the online store from published_at on."
+				},
+				"published_at": {
+					"type": "string",
+					"description": "When the post goes live, as an ISO date and time (2026-10-20T09:00:00Z). A later time schedules it. Left out on a published post = now."
+				},
+				"cover": {
+					"type": [
+						"string",
+						"null"
+					],
+					"description": "The thumbnail: a /uploads/<shop id>/… path of a picture already uploaded to this shop, or null for none."
+				}
+			},
+			"required": [
+				"id"
+			]
+		},
+		{
+			"name": "delete_post",
+			"summary": "tool.delete",
+			"description": "tool.delete_description",
+			"route": "DELETE /posts/:id",
+			"role": "manager",
+			"input": {
+				"id": {
+					"type": "integer",
+					"description": "The post's id, from blogger_list_posts."
+				}
+			},
+			"required": [
+				"id"
+			]
+		}
+	]
+}
