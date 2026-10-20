@@ -36,6 +36,7 @@ import {
 	pageHtml,
 	postData,
 	postHtml,
+	blogUrl,
 	postPath,
 	type Frame,
 	type Look,
@@ -233,7 +234,11 @@ function lookOf(ctx: RouteContext): Look {
 		dateStyle: "long",
 		timeZone: ctx.shop.timezone || undefined,
 	});
-	return { t: ctx.t, date: (iso) => format.format(new Date(iso)) };
+	return {
+		t: ctx.t,
+		blog: blogUrl(ctx),
+		date: (iso) => format.format(new Date(iso)),
+	};
 }
 
 /**
@@ -255,7 +260,7 @@ async function listPage(ctx: RouteContext, tag: string) {
 		found,
 		Number(ctx.url.searchParams.get("page")),
 	);
-	const base = tag ? `${BLOG_PATH}/tag/${encodeURIComponent(tag)}` : BLOG_PATH;
+	const base = tag ? `/tag/${encodeURIComponent(tag)}` : "";
 	const title = name
 		? ctx.t("store.tag_title", { tag: name })
 		: ctx.t("store.title");
@@ -281,11 +286,9 @@ async function listPage(ctx: RouteContext, tag: string) {
 	frame.description = ctx.t("store.description", { shop: ctx.shop.name });
 	// the share picture of a list: the cover of its newest post
 	frame.image = fullUrl(ctx, items.find((post) => post.cover)?.cover ?? null);
-	frame.prev = page > 1 ? fullUrl(ctx, pathOf(base, page - 1)) : null;
-	frame.next = page < last ? fullUrl(ctx, pathOf(base, page + 1)) : null;
-	frame.data = listData(frame, items, `${ctx.store_url}${BLOG_PATH}`, (post) =>
-		fullUrl(ctx, post.cover),
-	);
+	frame.prev = page > 1 ? frame.blog + pathOf(base, page - 1) : null;
+	frame.next = page < last ? frame.blog + pathOf(base, page + 1) : null;
+	frame.data = listData(frame, items, (post) => fullUrl(ctx, post.cover));
 	return ctx.storefront.page({ html: pageHtml(frame, body) });
 }
 
@@ -293,18 +296,20 @@ async function listPage(ctx: RouteContext, tag: string) {
  * What goes around a store page of the blog.
  * @param ctx The route's context.
  * @param title The page's title.
- * @param path The page's path in the store.
+ * @param path The page's path below the blog's start, "" for the blog.
  * @returns The frame for `pageHtml`.
  */
 function frameOf(ctx: RouteContext, title: string, path: string): Frame {
+	const blog = blogUrl(ctx);
 	return {
 		lang: ctx.locale,
 		title,
 		description: "",
-		url: `${ctx.store_url}${path}`,
+		url: blog + path,
 		image: null,
 		shop: ctx.shop.name,
 		home: ctx.store_url,
+		blog,
 		t: ctx.t,
 		type: "website",
 		logo: fullUrl(ctx, ctx.shop.logo),
@@ -326,7 +331,7 @@ function fullUrl(ctx: RouteContext, path: string | null): string | null {
 
 /**
  * The path of one page of a list.
- * @param base The list's own path (the blog, or one tag).
+ * @param base The list's path below the blog's start ("" or one tag).
  * @param page The page, from 1.
  * @returns The path. The first page has no number.
  */
@@ -360,6 +365,7 @@ export const publicRoutes: Routes = {
 				title: `${ctx.t("store.title")} · ${ctx.shop.name}`,
 				description: ctx.t("store.description", { shop: ctx.shop.name }),
 				home: ctx.store_url,
+				blog: blogUrl(ctx),
 				lang: ctx.locale,
 			},
 			posts,
@@ -384,7 +390,7 @@ export const publicRoutes: Routes = {
 		const more = livePosts(index, now)
 			.filter((one) => one.id !== post.id)
 			.slice(0, MORE_POSTS);
-		const frame = frameOf(ctx, post.title, postPath(post));
+		const frame = frameOf(ctx, post.title, postPath(post, ""));
 		frame.description =
 			post.summary || ctx.t("store.description", { shop: ctx.shop.name });
 		frame.image = fullUrl(ctx, post.cover);
@@ -394,7 +400,7 @@ export const publicRoutes: Routes = {
 			modified: post.updated_at,
 			tags: post.tags,
 		};
-		frame.data = postData(frame, post, `${ctx.store_url}${BLOG_PATH}`);
+		frame.data = postData(frame, post);
 		const body = postHtml(post, more, frame.url, ctx.shop.name, lookOf(ctx));
 		return ctx.storefront.page({ html: pageHtml(frame, body) });
 	},

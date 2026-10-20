@@ -105,13 +105,17 @@ export default {
 	"store.all_posts": "All posts",
 	"store.rss": "RSS feed",
 	"tool.list": "List the blog's posts",
-	"tool.list_description": "Every post of the shop's blog, newest first, without the body: id, title, slug, summary, cover, tags, status, published_at, updated_at and reading minutes. Also the tags in use and the blog's address.",
+	"tool.list_description":
+		"Every post of the shop's blog, newest first, without the body: id, title, slug, summary, cover, tags, status, published_at, updated_at and reading minutes. Also the tags in use and the blog's address.",
 	"tool.get": "Read one blog post",
 	"tool.get_description": "One post with its whole body (HTML).",
 	"tool.create": "Write a new blog post",
-	"tool.create_description": "Add a post to the shop's blog. Use status draft to let a person check it first. A published post is on the online store, in its sitemap and its RSS feed.",
+	"tool.create_description":
+		"Add a post to the shop's blog. Use status draft to let a person check it first. A published post is on the online store, in its sitemap and its RSS feed.",
 	"tool.update": "Change a blog post",
-	"tool.update_description": "Change a post. Send only the fields to change: the others keep their value. Set status to published to publish a draft.",
+	"tool.update_description":
+		"Change a post. Send only the fields to change: the others keep their value. Set status to published to publish a draft.",
 	"tool.delete": "Delete a blog post",
-	"tool.delete_description": "Delete a post for good. Its pictures are removed when nothing else uses them.",
+	"tool.delete_description":
+		"Delete a post for good. Its pictures are removed when nothing else uses them.",
 };

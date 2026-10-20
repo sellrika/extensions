@@ -23,6 +23,11 @@ const FONTS =
 /** What both pages need to write their texts. */
 export type Look = {
 	t: Translate;
+	/**
+	 * Where the blog starts: a full address, no `/` at the end.
+	 * Every post, tag and page link is built from it.
+	 */
+	blog: string;
 	/** Formats a post's date in the visitor's language. */
 	date: (iso: string) => string;
 };
@@ -43,6 +48,11 @@ export type Frame = {
 	shop: string;
 	/** The address of the shop's online store. */
 	home: string;
+	/**
+	 * Where the blog starts: a full address, no `/` at the end.
+	 * It may be on another host than `home`.
+	 */
+	blog: string;
 	/** The texts of the header, the band and the footer. */
 	t: Translate;
 	/** "article" for a post, "website" for a list. */
@@ -84,13 +94,14 @@ export function esc(text: string): string {
  */
 export function pageHtml(frame: Frame, body: string): string {
 	const home = esc(frame.home);
+	const blog = esc(frame.blog);
 	const shop = esc(frame.shop);
 	const t = frame.t;
-	const nav = `<nav class="blg-nav"><a href="${home}">${esc(t("store.shop"))}</a><a class="is-on" href="${BLOG_PATH}" aria-current="page">${esc(t("store.title"))}</a><a href="${home}/track">${esc(t("store.track"))}</a></nav>`;
+	const nav = `<nav class="blg-nav"><a href="${home}">${esc(t("store.shop"))}</a><a class="is-on" href="${blog}" aria-current="page">${esc(t("store.title"))}</a><a href="${home}/track">${esc(t("store.track"))}</a></nav>`;
 	const visit = `<a class="blg-btn blg-btn-line" href="${home}">${esc(t("store.visit"))} <span aria-hidden="true">↗</span></a>`;
 	const header = `<header class="blg-site"><a class="blg-site-name" href="${home}">${shop}</a>${nav}${visit}</header>`;
 	const band = `<section class="blg-band"><div class="blg-band-in"><p class="blg-band-title">${esc(t("store.band"))}</p><a class="blg-btn blg-btn-light" href="${home}">${esc(t("store.visit"))} <span aria-hidden="true">↗</span></a></div></section>`;
-	const footer = `<footer class="blg-foot-site"><a class="blg-site-name" href="${home}">${shop}</a><nav class="blg-foot-links"><a href="${home}">${esc(t("store.shop"))}</a><a href="${BLOG_PATH}">${esc(t("store.title"))}</a><a href="${home}/track">${esc(t("store.track"))}</a><a href="${BLOG_PATH}/feed.xml" type="application/rss+xml">${esc(t("store.rss"))}</a></nav><small>© ${new Date().getFullYear()} ${shop}</small></footer>`;
+	const footer = `<footer class="blg-foot-site"><a class="blg-site-name" href="${home}">${shop}</a><nav class="blg-foot-links"><a href="${home}">${esc(t("store.shop"))}</a><a href="${blog}">${esc(t("store.title"))}</a><a href="${home}/track">${esc(t("store.track"))}</a><a href="${blog}/feed.xml" type="application/rss+xml">${esc(t("store.rss"))}</a></nav><small>© ${new Date().getFullYear()} ${shop}</small></footer>`;
 	return `<!doctype html><html lang="${esc(frame.lang)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${headTags(frame)}<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="${FONTS}"><style>${BLOG_CSS}</style></head><body class="blg">${header}<main>${body}</main>${band}${footer}</body></html>`;
 }
 
@@ -137,12 +148,14 @@ function headTags(frame: Frame): string {
 			`<meta property="article:author" content="${esc(frame.shop)}">`,
 		);
 		if (a.tags[0])
-			tags.push(`<meta property="article:section" content="${esc(a.tags[0])}">`);
+			tags.push(
+				`<meta property="article:section" content="${esc(a.tags[0])}">`,
+			);
 		for (const tag of a.tags)
 			tags.push(`<meta property="article:tag" content="${esc(tag)}">`);
 	}
 	tags.push(
-		`<link rel="alternate" type="application/rss+xml" title="${esc(`${frame.t("store.title")} · ${frame.shop}`)}" href="${esc(frame.home + BLOG_PATH)}/feed.xml">`,
+		`<link rel="alternate" type="application/rss+xml" title="${esc(`${frame.t("store.title")} · ${frame.shop}`)}" href="${esc(frame.blog)}/feed.xml">`,
 	);
 	if (frame.prev) tags.push(`<link rel="prev" href="${esc(frame.prev)}">`);
 	if (frame.next) tags.push(`<link rel="next" href="${esc(frame.next)}">`);
@@ -178,14 +191,13 @@ function shopData(frame: Frame): object {
 /**
  * The trail from the store to this page, for search results.
  * @param frame What the page is.
- * @param blogUrl The blog's full address.
  * @param post The post's title, or null on a list page.
  * @returns A schema.org BreadcrumbList.
  */
-function trailData(frame: Frame, blogUrl: string, post: string | null): object {
+function trailData(frame: Frame, post: string | null): object {
 	const items = [
 		[frame.shop, frame.home],
-		[frame.t("store.title"), blogUrl],
+		[frame.t("store.title"), frame.blog],
 		...(post ? [[post, frame.url]] : []),
 	];
 	return {
@@ -225,10 +237,9 @@ function postingData(post: Meta, url: string, image: string | null): object {
  * publisher, language and reading time, and the breadcrumbs.
  * @param frame What the page is (`frame.image` is the post's picture).
  * @param post The post.
- * @param blogUrl The blog's full address.
  * @returns The schema.org objects.
  */
-export function postData(frame: Frame, post: Post, blogUrl: string): object[] {
+export function postData(frame: Frame, post: Post): object[] {
 	const shop = shopData(frame);
 	return [
 		{
@@ -240,9 +251,13 @@ export function postData(frame: Frame, post: Post, blogUrl: string): object[] {
 			inLanguage: frame.lang,
 			...(post.tags[0] && { articleSection: post.tags[0] }),
 			timeRequired: `PT${post.minutes}M`,
-			isPartOf: { "@type": "Blog", name: frame.t("store.title"), url: blogUrl },
+			isPartOf: {
+				"@type": "Blog",
+				name: frame.t("store.title"),
+				url: frame.blog,
+			},
 		},
-		trailData(frame, blogUrl, post.title),
+		trailData(frame, post.title),
 	];
 }
 
@@ -251,14 +266,12 @@ export function postData(frame: Frame, post: Post, blogUrl: string): object[] {
  * page, and the breadcrumbs.
  * @param frame What the page is.
  * @param posts The posts of this page.
- * @param blogUrl The blog's full address.
  * @param imageOf Gives a post's picture as a full address, or null.
  * @returns The schema.org objects.
  */
 export function listData(
 	frame: Frame,
 	posts: Meta[],
-	blogUrl: string,
 	imageOf: (post: Meta) => string | null,
 ): object[] {
 	return [
@@ -272,33 +285,48 @@ export function listData(
 			inLanguage: frame.lang,
 			publisher: shopData(frame),
 			blogPost: posts.map((post) =>
-				postingData(
-					post,
-					`${frame.home}${postPath(post)}`,
-					imageOf(post),
-				),
+				postingData(post, postPath(post, frame.blog), imageOf(post)),
 			),
 		},
-		trailData(frame, blogUrl, null),
+		trailData(frame, null),
 	];
+}
+
+/**
+ * Where the blog starts on this request: a full address, no `/` at the end.
+ * A newer app hands it over as `ctx.storefront.url`. It may be on
+ * another host, when an add-on serves the blog at a host's root.
+ * An older app does not, so the blog falls back to `/blogs` of the store.
+ * @param ctx The route's store address and its store page tools.
+ * @returns The blog's full address.
+ */
+export function blogUrl(ctx: {
+	store_url: string;
+	storefront?: object;
+}): string {
+	// ponytail: typed read, `url` is not in every app's types yet
+	const url = (ctx.storefront as { url?: string } | undefined)?.url;
+	return (url ?? ctx.store_url + BLOG_PATH).replace(/\/+$/, "");
 }
 
 /**
  * The address of a tag's page.
  * @param tag The tag as written.
- * @returns Its path.
+ * @param blog Where the blog starts.
+ * @returns Its address.
  */
-export function tagPath(tag: string): string {
-	return `${BLOG_PATH}/tag/${encodeURIComponent(slugify(tag))}`;
+export function tagPath(tag: string, blog: string): string {
+	return `${blog}/tag/${encodeURIComponent(slugify(tag))}`;
 }
 
 /**
  * The address of a post.
  * @param post The post.
- * @returns Its path.
+ * @param blog Where the blog starts.
+ * @returns Its address.
  */
-export function postPath(post: { slug: string }): string {
-	return `${BLOG_PATH}/${encodeURIComponent(post.slug)}`;
+export function postPath(post: { slug: string }, blog: string): string {
+	return `${blog}/${encodeURIComponent(post.slug)}`;
 }
 
 /**
@@ -360,7 +388,7 @@ function featured(post: Meta, look: Look): string {
 	const summary = post.summary
 		? `<span class="blg-feat-summary">${esc(post.summary)}</span>`
 		: "";
-	return `<article class="blg-feat"><a class="blg-feat-link" href="${postPath(post)}">${picture(post, "blg-feat-img", false)}<div class="blg-feat-text"><span class="blg-badge">${esc(look.t("store.featured"))}</span>${metaLine(post, look)}<h2 class="blg-feat-title">${esc(post.title)}</h2>${summary}<span class="blg-btn blg-btn-accent">${esc(look.t("store.read"))} <span aria-hidden="true">→</span></span></div></a></article>`;
+	return `<article class="blg-feat"><a class="blg-feat-link" href="${esc(postPath(post, look.blog))}">${picture(post, "blg-feat-img", false)}<div class="blg-feat-text"><span class="blg-badge">${esc(look.t("store.featured"))}</span>${metaLine(post, look)}<h2 class="blg-feat-title">${esc(post.title)}</h2>${summary}<span class="blg-btn blg-btn-accent">${esc(look.t("store.read"))} <span aria-hidden="true">→</span></span></div></a></article>`;
 }
 
 /**
@@ -373,7 +401,7 @@ function card(post: Meta, look: Look): string {
 	const summary = post.summary
 		? `<span class="blg-summary">${esc(post.summary)}</span>`
 		: "";
-	return `<article class="blg-card"><a class="blg-card-link" href="${postPath(post)}">${picture(post, "blg-thumb", true)}${metaLine(post, look)}<h3 class="blg-card-title">${esc(post.title)}</h3>${summary}</a></article>`;
+	return `<article class="blg-card"><a class="blg-card-link" href="${esc(postPath(post, look.blog))}">${picture(post, "blg-thumb", true)}${metaLine(post, look)}<h3 class="blg-card-title">${esc(post.title)}</h3>${summary}</a></article>`;
 }
 
 /**
@@ -386,7 +414,7 @@ function card(post: Meta, look: Look): string {
 function row(post: Meta, n: number, look: Look): string {
 	const tag = post.tags[0] ? `${esc(post.tags[0])} · ` : "";
 	const date = post.published_at ? dateTag(post.published_at, look) : "";
-	return `<article class="blg-row"><a class="blg-row-link" href="${postPath(post)}"><span class="blg-row-n">${String(n).padStart(2, "0")}</span><div class="blg-row-text"><span class="blg-row-meta">${tag}${date}</span><h3 class="blg-row-title">${esc(post.title)}</h3></div>${picture(post, "blg-row-img", true)}</a></article>`;
+	return `<article class="blg-row"><a class="blg-row-link" href="${esc(postPath(post, look.blog))}"><span class="blg-row-n">${String(n).padStart(2, "0")}</span><div class="blg-row-text"><span class="blg-row-meta">${tag}${date}</span><h3 class="blg-row-title">${esc(post.title)}</h3></div>${picture(post, "blg-row-img", true)}</a></article>`;
 }
 
 /**
@@ -398,7 +426,7 @@ function row(post: Meta, n: number, look: Look): string {
  * @returns The tab's HTML.
  */
 function tab(label: string, href: string, n: number, on: boolean): string {
-	return `<a class="blg-tab${on ? " is-on" : ""}" href="${href}"${on ? ' aria-current="page"' : ""}>${esc(label)}<small>${n}</small></a>`;
+	return `<a class="blg-tab${on ? " is-on" : ""}" href="${esc(href)}"${on ? ' aria-current="page"' : ""}>${esc(label)}<small>${n}</small></a>`;
 }
 
 /**
@@ -418,10 +446,12 @@ function tagRow(
 	look: Look,
 ): string {
 	if (!tags.length) return "";
-	const links = [tab(look.t("store.all"), BLOG_PATH, total, !on)];
+	const links = [tab(look.t("store.all"), look.blog, total, !on)];
 	for (const tag of tags) {
 		const slug = slugify(tag);
-		links.push(tab(tag, tagPath(tag), counts[slug] ?? 0, slug === on));
+		links.push(
+			tab(tag, tagPath(tag, look.blog), counts[slug] ?? 0, slug === on),
+		);
 	}
 	return `<nav class="blg-tabs">${links.join("")}</nav>`;
 }
@@ -451,11 +481,11 @@ function pager(base: string, page: number, last: number, look: Look): string {
 	const older = esc(look.t("store.older"));
 	const prev =
 		page > 1
-			? `<a class="blg-btn blg-btn-line" rel="prev" aria-label="${newer}" href="${pagePath(base, page - 1)}">← ${newer}</a>`
+			? `<a class="blg-btn blg-btn-line" rel="prev" aria-label="${newer}" href="${esc(pagePath(base, page - 1))}">← ${newer}</a>`
 			: `<span class="blg-btn blg-btn-line is-off">← ${newer}</span>`;
 	const next =
 		page < last
-			? `<a class="blg-btn blg-btn-line" rel="next" aria-label="${older}" href="${pagePath(base, page + 1)}">${older} →</a>`
+			? `<a class="blg-btn blg-btn-line" rel="next" aria-label="${older}" href="${esc(pagePath(base, page + 1))}">${older} →</a>`
 			: `<span class="blg-btn blg-btn-line is-off">${older} →</span>`;
 	const numbers: string[] = [];
 	const from = Math.max(1, page - PAGER_SPAN);
@@ -464,7 +494,7 @@ function pager(base: string, page: number, last: number, look: Look): string {
 		numbers.push(
 			n === page
 				? `<span class="blg-page is-on" aria-current="page">${n}</span>`
-				: `<a class="blg-page" href="${pagePath(base, n)}">${n}</a>`,
+				: `<a class="blg-page" href="${esc(pagePath(base, n))}">${n}</a>`,
 		);
 	return `<nav class="blg-pager" aria-label="${esc(look.t("store.page_of", { page, last }))}">${prev}<span class="blg-pages">${numbers.join("")}</span>${next}</nav>`;
 }
@@ -510,8 +540,8 @@ export function listHtml(
 	look: Look,
 ): string {
 	const base = o.tag
-		? `${BLOG_PATH}/tag/${encodeURIComponent(o.tag)}`
-		: BLOG_PATH;
+		? `${look.blog}/tag/${encodeURIComponent(o.tag)}`
+		: look.blog;
 	const lead = o.page === 1 && !o.tag ? o.posts[0] : undefined;
 	const rest = lead ? o.posts.slice(1) : o.posts;
 	const grid = rest.slice(0, GRID_SIZE);
@@ -605,12 +635,15 @@ export function postHtml(
 		? `<div class="blg-cover-wrap"><img class="blg-cover" src="${esc(post.cover)}" alt="${esc(post.title)}" fetchpriority="high"></div>`
 		: "";
 	const tags = post.tags
-		.map((tag) => `<a class="blg-tag" href="${tagPath(tag)}">${esc(tag)}</a>`)
+		.map(
+			(tag) =>
+				`<a class="blg-tag" href="${esc(tagPath(tag, look.blog))}">${esc(tag)}</a>`,
+		)
 		.join("");
 	const next = more.length
-		? `<section class="blg-next"><div class="blg-sec-head"><h2>${esc(look.t("store.more"))}</h2><a class="blg-all" href="${BLOG_PATH}">${esc(look.t("store.all_posts"))} →</a></div><div class="blg-grid">${more.map((one) => card(one, look)).join("")}</div></section>`
+		? `<section class="blg-next"><div class="blg-sec-head"><h2>${esc(look.t("store.more"))}</h2><a class="blg-all" href="${esc(look.blog)}">${esc(look.t("store.all_posts"))} →</a></div><div class="blg-grid">${more.map((one) => card(one, look)).join("")}</div></section>`
 		: "";
-	return `<article class="blg-post"><header class="blg-post-head"><nav class="blg-crumb"><a class="blg-back" href="${BLOG_PATH}" aria-label="${esc(look.t("store.back"))}">← ${esc(look.t("store.title"))}</a>${topic}</nav><h1 class="blg-title">${esc(post.title)}</h1>${lead}${byline}</header>${cover}<div class="blg-body rich-html">${post.body}</div><footer class="blg-end"><nav class="blg-tags">${tags}</nav>${share(post, url, look)}</footer></article>${next}`;
+	return `<article class="blg-post"><header class="blg-post-head"><nav class="blg-crumb"><a class="blg-back" href="${esc(look.blog)}" aria-label="${esc(look.t("store.back"))}">← ${esc(look.t("store.title"))}</a>${topic}</nav><h1 class="blg-title">${esc(post.title)}</h1>${lead}${byline}</header>${cover}<div class="blg-body rich-html">${post.body}</div><footer class="blg-end"><nav class="blg-tags">${tags}</nav>${share(post, url, look)}</footer></article>${next}`;
 }
 
 /**

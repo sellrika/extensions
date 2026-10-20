@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import {
+	blogUrl,
 	type Frame,
 	listData,
 	listHtml,
@@ -207,6 +208,7 @@ test("the store pages escape what a person typed and link posts, tags and pages"
 	const look = {
 		t: (key: string, params?: Record<string, string | number>) =>
 			params ? `${key}:${Object.values(params).join(",")}` : key,
+		blog: "/blogs",
 		date: () => "1 Oct 2026",
 	};
 	const evil = meta({
@@ -288,7 +290,9 @@ test("the store pages escape what a person typed and link posts, tags and pages"
 	);
 	// the posts to read next, and the shop as the author
 	expect(page).toContain('class="blg-card-link" href="/blogs/next"');
-	expect(page).toContain('<span class="blg-avatar" aria-hidden="true">MS</span>');
+	expect(page).toContain(
+		'<span class="blg-avatar" aria-hidden="true">MS</span>',
+	);
 	// the share links carry the post's full address, encoded
 	expect(page).toContain(
 		"https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fshop.test%2Fblogs%2Fa%2520b",
@@ -314,6 +318,7 @@ test("a post page tells search engines and AI search what it is", () => {
 		image: "https://shop.test/uploads/1/a.webp",
 		shop: "Main Shop",
 		home: "https://shop.test",
+		blog: "https://shop.test/blogs",
 		t: (key: string) => key,
 		type: "article",
 		logo: null,
@@ -324,7 +329,7 @@ test("a post page tells search engines and AI search what it is", () => {
 			tags: post.tags,
 		},
 	};
-	frame.data = postData(frame, post, "https://shop.test/blogs");
+	frame.data = postData(frame, post);
 	const html = pageHtml(frame, "");
 	// the structured data parses, and no title can close its script tag
 	const scripts = [
@@ -341,14 +346,15 @@ test("a post page tells search engines and AI search what it is", () => {
 	expect(html).not.toContain("<script>x()");
 	// the head tags of an article
 	expect(html).toContain('<meta property="og:type" content="article">');
-	expect(html).toContain('<meta name="twitter:card" content="summary_large_image">');
+	expect(html).toContain(
+		'<meta name="twitter:card" content="summary_large_image">',
+	);
 	expect(html).toContain('<meta property="article:tag" content="Guides">');
 	expect(html).toContain("max-image-preview:large");
 	// a list names its posts with their full addresses
 	const list = listData(
 		{ ...frame, type: "website", url: "https://shop.test/blogs" },
 		[post],
-		"https://shop.test/blogs",
 		() => null,
 	);
 	expect((list[0] as { blogPost: { url: string }[] }).blogPost[0]?.url).toBe(
@@ -372,6 +378,7 @@ test("the feed carries whole posts with full addresses, and nothing can break it
 			title: "Blog · Main Shop",
 			description: "News",
 			home: "https://shop.test",
+			blog: "https://shop.test/blogs",
 			lang: "en",
 		},
 		[post],
@@ -388,4 +395,93 @@ test("the feed carries whole posts with full addresses, and nothing can break it
 	expect(xml).toContain('href="//evil.test"');
 	// a "]]>" in the body does not end the CDATA block early
 	expect(xml).toContain("Hi ]]]]><![CDATA[> there");
+});
+
+/**
+ * Build a whole post page and a list page on one blog address.
+ * @param blog Where the blog starts.
+ * @returns The post page and the list page.
+ */
+function pagesOn(blog: string): { post: string; list: string } {
+	const look = { t: (key: string) => key, blog, date: () => "1 Oct 2026" };
+	const post: Post = {
+		...meta({ slug: "brew", tags: ["Coffee"] }),
+		body: "<p>Text</p>",
+	};
+	const frame: Frame = {
+		lang: "en",
+		title: post.title,
+		description: "",
+		url: `${blog}/brew`,
+		image: null,
+		shop: "Main Shop",
+		home: "https://shop.x.com",
+		blog,
+		t: look.t,
+		type: "article",
+		logo: null,
+		data: [],
+	};
+	frame.data = postData(frame, post);
+	const body = postHtml(
+		post,
+		[meta({ id: 2, slug: "next" })],
+		frame.url,
+		"Main Shop",
+		look,
+	);
+	const list = listHtml(
+		{
+			title: "Blog",
+			intro: "",
+			posts: [post],
+			tags: ["Coffee"],
+			counts: { coffee: 1 },
+			total: 1,
+			tag: "",
+			page: 1,
+			last: 2,
+		},
+		look,
+	);
+	return { post: pageHtml(frame, body), list };
+}
+
+test("every blog link starts at the blog's address, also on another host", () => {
+	const { post, list } = pagesOn("https://blog.x.com");
+	expect(post).toContain(
+		'<link rel="canonical" href="https://blog.x.com/brew">',
+	);
+	expect(post).toContain(
+		'<meta property="og:url" content="https://blog.x.com/brew">',
+	);
+	expect(post).toContain('href="https://blog.x.com/feed.xml"');
+	expect(post).toContain('href="https://blog.x.com/tag/coffee"');
+	expect(post).toContain(
+		'class="blg-card-link" href="https://blog.x.com/next"',
+	);
+	expect(post).toContain('"url":"https://blog.x.com"');
+	expect(list).toContain('href="https://blog.x.com/brew"');
+	expect(list).toContain('href="https://blog.x.com/tag/coffee"');
+	expect(list).toContain('href="https://blog.x.com?page=2"');
+	// the way back to the shop stays on the store's host
+	expect(post).toContain('<a href="https://shop.x.com/track">');
+	expect(post).not.toContain('"/blogs');
+});
+
+test("without a blog address from the app, the blog is /blogs of the store", () => {
+	const store = "https://shop.x.com";
+	expect(blogUrl({ store_url: store })).toBe("https://shop.x.com/blogs");
+	expect(blogUrl({ store_url: store, storefront: {} })).toBe(
+		"https://shop.x.com/blogs",
+	);
+	expect(
+		blogUrl({ store_url: store, storefront: { url: "https://blog.x.com/" } }),
+	).toBe("https://blog.x.com");
+	const { post } = pagesOn(blogUrl({ store_url: store }));
+	expect(post).toContain(
+		'<link rel="canonical" href="https://shop.x.com/blogs/brew">',
+	);
+	expect(post).toContain('href="https://shop.x.com/blogs/feed.xml"');
+	expect(post).toContain('href="https://shop.x.com/blogs/tag/coffee"');
 });
