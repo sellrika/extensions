@@ -63,6 +63,15 @@ const EDITABLE = [
 	"published_at",
 ] as const;
 
+/** How many links the shop's own menu may have. */
+const MENU_MAX = 5;
+
+/** How many pictures sent as base64 one save may store. */
+const PICTURES_MAX = 20;
+
+/** A picture sent as base64 inside the body's HTML. */
+const DATA_PICTURE = /data:image\/[\w.+-]+;base64,[A-Za-z0-9+/]+={0,2}/g;
+
 /** How many other posts a post's page offers to read next. */
 const MORE_POSTS = 3;
 
@@ -121,9 +130,53 @@ function invalid(ctx: RouteContext, errors: Errors): Response {
 }
 
 /**
+ * Store the pictures an AI tool or the API sent as text.
+ * A cover that is base64 or an https link, and every base64 picture in
+ * the body, are saved to the shop's storage. Their paths take their
+ * place in `input`.
+ * @param ctx The route's context.
+ * @param input What the call sent. Changed in place.
+ * @returns The new paths, and the errors by field (dictionary keys).
+ */
+async function storePictures(
+	ctx: RouteContext,
+	input: PostInput,
+): Promise<{ saved: string[]; errors: Errors }> {
+	const saved: string[] = [];
+	const errors: Errors = {};
+	const cover = typeof input.cover === "string" ? input.cover.trim() : "";
+	if (cover && !cover.startsWith("/uploads/")) {
+		const r = await ctx.uploads.save(cover);
+		if ("url" in r) {
+			input.cover = r.url;
+			saved.push(r.url);
+		} else errors.cover = "error.picture_save";
+	}
+	if (typeof input.body !== "string") return { saved, errors };
+	let body = input.body;
+	const found = [...new Set(body.match(DATA_PICTURE) ?? [])];
+	if (found.length > PICTURES_MAX) {
+		errors.body = "error.too_many_pictures";
+		return { saved, errors };
+	}
+	for (const data of found) {
+		const r = await ctx.uploads.save(data);
+		if ("error" in r) {
+			errors.body = "error.picture_save";
+			break;
+		}
+		body = body.replaceAll(data, r.url);
+		saved.push(r.url);
+	}
+	input.body = body;
+	return { saved, errors };
+}
+
+/**
  * Save a new post or a change of one.
  * The whole "read the index, check, write" runs under one lock, so two
  * saves at the same moment can't take the same link name.
+ * Pictures sent as text are stored first (`storePictures`).
  * Pictures the post stopped using are handed back to the app.
  * @param ctx The route's context.
  * @param id The post to change, or null for a new one.
@@ -133,8 +186,14 @@ async function save(ctx: RouteContext, id: number | null) {
 	const denied = refuse(ctx);
 	if (denied) return denied;
 	const input = ((await ctx.req.json().catch(() => null)) ?? {}) as PostInput;
+	// stored before the lock: a download may take a while
+	const pictures = await storePictures(ctx, input);
+	if (Object.keys(pictures.errors).length) {
+		await ctx.uploads.drop(pictures.saved);
+		return invalid(ctx, pictures.errors);
+	}
 	const posts = ctx.data.collection<Omit<Post, "id">>(POSTS);
-	return ctx.data.lock(LOCK, async function write() {
+	const result = await ctx.data.lock(LOCK, async function write() {
 		const index = await readIndex(ctx.data);
 		const row = id === null ? null : await posts.get(id);
 		if (id !== null && !row) return gone();
@@ -170,6 +229,9 @@ async function save(ctx: RouteContext, id: number | null) {
 		}
 		return post;
 	});
+	// a refused save keeps none of the pictures it stored
+	if (result instanceof Response) await ctx.uploads.drop(pictures.saved);
+	return result;
 }
 
 /**
@@ -305,11 +367,43 @@ function frameOf(ctx: RouteContext, title: string, path: string): Frame {
 		image: null,
 		shop: ctx.shop.name,
 		home: ctx.store_url,
+		link: linkOf(ctx),
+		menu: menuOf(ctx),
 		t: ctx.t,
 		type: "website",
 		logo: fullUrl(ctx, ctx.shop.logo),
 		data: [],
 	};
+}
+
+/**
+ * The blog's own button from the settings, when the shop set a link.
+ * @param ctx The route's context.
+ * @returns The link and its text, or null to lead to the store.
+ */
+function linkOf(ctx: RouteContext): Frame["link"] {
+	const url = String(ctx.config.link_url ?? "").trim();
+	if (!url.startsWith("https://")) return null;
+	return { url, text: String(ctx.config.link_text ?? "").trim() };
+}
+
+/**
+ * The shop's own menu from the settings.
+ * Only links of the site (`/…`) and http(s) links are kept.
+ * @param ctx The route's context.
+ * @returns The links (at most `MENU_MAX`), or null for the usual menu.
+ */
+function menuOf(ctx: RouteContext): Frame["menu"] {
+	if (ctx.config.menu_custom !== true) return null;
+	const rows = Array.isArray(ctx.config.menu) ? ctx.config.menu : [];
+	const menu: { name: string; url: string }[] = [];
+	for (const row of rows.slice(0, MENU_MAX)) {
+		if (typeof row !== "object" || row === null) continue;
+		const name = String(row.name ?? "").trim();
+		const url = String(row.url ?? "").trim();
+		if (name && /^(https?:\/\/|\/)/.test(url)) menu.push({ name, url });
+	}
+	return menu;
 }
 
 /**

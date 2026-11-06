@@ -1,11 +1,57 @@
 {
 	"key": "blogger",
 	"name": "name",
-	"version": "1.0.0",
+	"version": "1.1.0",
 	"description": "description",
 	"icon": "assets/icon.svg",
 	"main": "index.ts",
-	"fields": [],
+	"fields": [
+		{
+			"name": "menu_custom",
+			"label": "setting.menu_custom",
+			"type": "switch",
+			"hint": "setting.menu_custom_hint"
+		},
+		{
+			"name": "menu",
+			"label": "setting.menu",
+			"type": "list",
+			"max": 5,
+			"add_label": "setting.menu_add",
+			"hint": "setting.menu_hint",
+			"fields": [
+				{
+					"name": "name",
+					"label": "setting.menu_name",
+					"type": "text",
+					"required": true,
+					"grid": 3
+				},
+				{
+					"name": "url",
+					"label": "setting.menu_url",
+					"type": "url",
+					"required": true,
+					"placeholder": "https://…",
+					"grid": 5
+				}
+			]
+		},
+		{
+			"name": "link_url",
+			"label": "setting.link_url",
+			"type": "url",
+			"placeholder": "https://…",
+			"hint": "setting.link_url_hint"
+		},
+		{
+			"name": "link_text",
+			"label": "setting.link_text",
+			"type": "text",
+			"placeholder": "Visit the shop",
+			"hint": "setting.link_text_hint"
+		}
+	],
 	"pages": [
 		{
 			"path": "posts",
@@ -66,7 +112,7 @@
 				},
 				"body": {
 					"type": "string",
-					"description": "The post's text as HTML: p, h2, h3, ul, ol, li, a, strong, em, blockquote, figure, figcaption, img, table. Scripts and styles are removed. A picture must be a /uploads/… path of this shop or an https link; picture data is refused."
+					"description": "The post's text as HTML: p, h2, h3, ul, ol, li, a, strong, em, blockquote, figure, figcaption, img, table. Scripts and styles are removed. A picture is a /uploads/… path of this shop, an https link, or the picture itself as a data:image/…;base64, URI in the src. Base64 pictures are saved to the shop's storage (at most 20, 5 MB each, 8 MB for the whole call)."
 				},
 				"tags": {
 					"type": "array",
@@ -92,7 +138,7 @@
 						"string",
 						"null"
 					],
-					"description": "The thumbnail: a /uploads/<shop id>/… path of a picture already uploaded to this shop, or null for none."
+					"description": "The thumbnail: a /uploads/<shop id>/… path of this shop, an https:// link to a picture, or the picture itself as base64 (a data:image/…;base64, URI or plain base64, 5 MB at most). A link or base64 is saved to the shop's storage. null = none."
 				}
 			},
 			"required": [
@@ -125,7 +171,7 @@
 				},
 				"body": {
 					"type": "string",
-					"description": "The post's text as HTML: p, h2, h3, ul, ol, li, a, strong, em, blockquote, figure, figcaption, img, table. Scripts and styles are removed. A picture must be a /uploads/… path of this shop or an https link; picture data is refused."
+					"description": "The post's text as HTML: p, h2, h3, ul, ol, li, a, strong, em, blockquote, figure, figcaption, img, table. Scripts and styles are removed. A picture is a /uploads/… path of this shop, an https link, or the picture itself as a data:image/…;base64, URI in the src. Base64 pictures are saved to the shop's storage (at most 20, 5 MB each, 8 MB for the whole call)."
 				},
 				"tags": {
 					"type": "array",
@@ -151,7 +197,7 @@
 						"string",
 						"null"
 					],
-					"description": "The thumbnail: a /uploads/<shop id>/… path of a picture already uploaded to this shop, or null for none."
+					"description": "The thumbnail: a /uploads/<shop id>/… path of this shop, an https:// link to a picture, or the picture itself as base64 (a data:image/…;base64, URI or plain base64, 5 MB at most). A link or base64 is saved to the shop's storage. null = none."
 				}
 			},
 			"required": [

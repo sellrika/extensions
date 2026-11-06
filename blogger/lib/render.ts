@@ -43,6 +43,18 @@ export type Frame = {
 	shop: string;
 	/** The address of the shop's online store. */
 	home: string;
+	/**
+	 * The blog's own button, from the settings. When set, the buttons
+	 * lead there and the links to the shop are left out (the store may
+	 * be only a demo).
+	 */
+	link?: { url: string; text: string } | null;
+	/**
+	 * The shop's own menu, from the settings: 0 to 5 links.
+	 * Null or left out = the usual Shop, Blog and Track order.
+	 * An empty list = no menu.
+	 */
+	menu?: { name: string; url: string }[] | null;
 	/** The texts of the header, the band and the footer. */
 	t: Translate;
 	/** "article" for a post, "website" for a list. */
@@ -86,12 +98,36 @@ export function pageHtml(frame: Frame, body: string): string {
 	const home = esc(frame.home);
 	const shop = esc(frame.shop);
 	const t = frame.t;
-	const nav = `<nav class="blg-nav"><a href="${home}">${esc(t("store.shop"))}</a><a class="is-on" href="${BLOG_PATH}" aria-current="page">${esc(t("store.title"))}</a><a href="${home}/track">${esc(t("store.track"))}</a></nav>`;
-	const visit = `<a class="blg-btn blg-btn-line" href="${home}">${esc(t("store.visit"))} <span aria-hidden="true">↗</span></a>`;
-	const header = `<header class="blg-site"><a class="blg-site-name" href="${home}">${shop}</a>${nav}${visit}</header>`;
-	const band = `<section class="blg-band"><div class="blg-band-in"><p class="blg-band-title">${esc(t("store.band"))}</p><a class="blg-btn blg-btn-light" href="${home}">${esc(t("store.visit"))} <span aria-hidden="true">↗</span></a></div></section>`;
-	const footer = `<footer class="blg-foot-site"><a class="blg-site-name" href="${home}">${shop}</a><nav class="blg-foot-links"><a href="${home}">${esc(t("store.shop"))}</a><a href="${BLOG_PATH}">${esc(t("store.title"))}</a><a href="${home}/track">${esc(t("store.track"))}</a><a href="${BLOG_PATH}/feed.xml" type="application/rss+xml">${esc(t("store.rss"))}</a></nav><small>© ${new Date().getFullYear()} ${shop}</small></footer>`;
+	// with a link of its own, the blog never sends people to the store
+	const own = frame.link;
+	const to = own ? esc(own.url) : home;
+	const label = esc(own?.text || t("store.visit"));
+	const brand = own ? BLOG_PATH : home;
+	const links = menuLinks(frame);
+	const nav = links ? `<nav class="blg-nav">${links}</nav>` : "";
+	const visit = `<a class="blg-btn blg-btn-line" href="${to}">${label} <span aria-hidden="true">↗</span></a>`;
+	const header = `<header class="blg-site"><a class="blg-site-name" href="${brand}">${shop}</a>${nav}${visit}</header>`;
+	const band = `<section class="blg-band"><div class="blg-band-in"><p class="blg-band-title">${esc(t(own ? "store.band_link" : "store.band"))}</p><a class="blg-btn blg-btn-light" href="${to}">${label} <span aria-hidden="true">↗</span></a></div></section>`;
+	const footer = `<footer class="blg-foot-site"><a class="blg-site-name" href="${brand}">${shop}</a><nav class="blg-foot-links">${links.replace(' class="is-on"', "").replace(' aria-current="page"', "")}<a href="${BLOG_PATH}/feed.xml" type="application/rss+xml">${esc(t("store.rss"))}</a></nav><small>© ${new Date().getFullYear()} ${shop}</small></footer>`;
 	return `<!doctype html><html lang="${esc(frame.lang)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${headTags(frame)}<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="${FONTS}"><style>${BLOG_CSS}</style></head><body class="blg">${header}<main>${body}</main>${band}${footer}</body></html>`;
+}
+
+/**
+ * The links of the site's menu, for the header and the footer.
+ * The shop's own menu when it set one, else Shop, Blog and Track order.
+ * @param frame What goes around the page.
+ * @returns The `<a>` tags, "" for no menu.
+ */
+function menuLinks(frame: Frame): string {
+	if (frame.menu) {
+		let html = "";
+		for (const item of frame.menu)
+			html += `<a href="${esc(item.url)}">${esc(item.name)}</a>`;
+		return html;
+	}
+	const home = esc(frame.home);
+	const t = frame.t;
+	return `<a href="${home}">${esc(t("store.shop"))}</a><a class="is-on" href="${BLOG_PATH}" aria-current="page">${esc(t("store.title"))}</a><a href="${home}/track">${esc(t("store.track"))}</a>`;
 }
 
 /**
@@ -718,23 +754,22 @@ export const BLOG_CSS = `
 .blg-foot-site .blg-site-name{color:var(--fg);font-size:1.25rem}
 .blg-foot-links{display:flex;gap:1.75rem;color:var(--fg2);font-size:.9rem}
 .blg-foot-links a:hover{color:var(--fg)}
-.blg-post-head{display:flex;flex-direction:column;align-items:flex-start;gap:1.5rem;padding:4.5rem var(--pad) 3rem}
+.blg-post-head{display:flex;flex-direction:column;align-items:flex-start;gap:1.5rem;max-width:calc(45rem + 2 * var(--pad));margin:0 auto;padding:4.5rem var(--pad) 2.5rem}
 .blg-crumb{display:flex;align-items:center;gap:.6rem;font-size:.9rem}
 .blg-back{color:var(--fg2);font-weight:500}
 .blg-back:hover{color:var(--fg)}
 .blg-crumb-sep{color:var(--fg3)}
 .blg-crumb-topic{color:var(--accent);font-weight:600}
-.blg-title{max-width:56rem;margin:0;font-family:var(--serif);font-size:clamp(2.4rem,5.5vw,4.5rem);font-weight:500;letter-spacing:-.035em;line-height:1.04}
-.blg-lead{max-width:42.5rem;margin:0;color:var(--fg2);font-size:1.25rem;line-height:1.55}
+.blg-title{margin:0;font-family:var(--serif);font-size:clamp(2.2rem,4.5vw,3.5rem);font-weight:500;letter-spacing:-.035em;line-height:1.04}
+.blg-lead{margin:0;color:var(--fg2);font-size:1.25rem;line-height:1.55}
 .blg-by{display:flex;align-items:center;gap:.85rem;padding-top:.75rem}
 .blg-by b{display:block;font-size:.9rem}
 .blg-by small{color:var(--fg3);font-size:.82rem}
 .blg-avatar{display:inline-flex;align-items:center;justify-content:center;width:2.5rem;height:2.5rem;border-radius:50%;background:var(--fg);color:var(--bg);font-family:var(--serif);font-size:.95rem;font-weight:600}
 .blg-cover-wrap{padding:1rem var(--pad) 0}
 .blg-cover{display:block;width:100%;max-height:38.75rem;aspect-ratio:1200/620;object-fit:cover;border-radius:.5rem;background:var(--soft)}
-.blg-body{max-width:calc(42.5rem + 2 * var(--pad));margin:0 auto;padding:4.5rem var(--pad) 0;font-size:1.125rem;line-height:1.75}
+.blg-body{max-width:calc(45rem + 2 * var(--pad));margin:0 auto;padding:2.5rem var(--pad) 0;font-size:1.125rem;line-height:1.75}
 .blg-body [style]{color:inherit!important;background:none!important;font-family:inherit!important;font-size:inherit!important;line-height:inherit!important}
-.blg-body>p:first-child::first-letter{float:left;margin:.35rem .6rem 0 0;font-family:var(--serif);font-size:5.25rem;font-weight:500;line-height:.75;color:var(--accent)}
 .blg-body h1,.blg-body h2,.blg-body h3{margin:2.75rem 0 1rem;font-family:var(--serif);font-weight:500;letter-spacing:-.02em;line-height:1.2}
 .blg-body h1{font-size:2.25rem}.blg-body h2{font-size:2rem}.blg-body h3{font-size:1.5rem}
 .blg-body p{margin:0 0 1.5rem}

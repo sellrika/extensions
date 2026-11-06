@@ -50,9 +50,26 @@ To hide a post again, set **Status** to **Draft** and save.
 
 Press the bin on its row and confirm. The post and its pictures are removed.
 
+## Button link
+
+In the extension's settings you can set a **Button link** and a **Button text**.
+
+- The blog's buttons then go to that link, for example your own website.
+- Left empty, the buttons go to your online store, with the text "Visit the shop".
+
+## Menu
+
+By default the menu at the top shows **Shop**, **Blog** and **Track order**.
+
+- Turn on **Own menu** in the extension's settings to choose the links yourself.
+- Add up to 5 links. Each has a name and a link.
+- With **Own menu** on and no links, the blog shows no menu.
+- The footer shows the same links, plus the RSS feed.
+
 ## For AI assistants
 
 - With a manager or admin key, the MCP server has five blog tools: `blogger_list_posts`, `blogger_get_post`, `blogger_create_post`, `blogger_update_post` and `blogger_delete_post`.
 - Write a new post as a `draft` first, so a person can check it. Then set `status` to `published`.
 - `blogger_update_post` changes only the fields you send. The others keep their value.
-- A picture must already be uploaded to the shop. A tool cannot upload one.
+- A tool can send a picture as base64. For the thumbnail, `cover` may be base64 or an https link. In the body, put base64 in the `<img src>` as a `data:image/…;base64,` URI. The app saves each picture to the shop's storage and keeps only its path.
+- At most 20 base64 pictures per call, 5 MB each, and 8 MB for the whole call. Send big posts in steps: create the post, then add pictures with `blogger_update_post`.
