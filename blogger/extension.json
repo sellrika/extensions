@@ -7,6 +7,37 @@
 	"main": "index.ts",
 	"fields": [
 		{
+			"name": "menu_custom",
+			"label": "setting.menu_custom",
+			"type": "switch",
+			"hint": "setting.menu_custom_hint"
+		},
+		{
+			"name": "menu",
+			"label": "setting.menu",
+			"type": "list",
+			"max": 5,
+			"add_label": "setting.menu_add",
+			"hint": "setting.menu_hint",
+			"fields": [
+				{
+					"name": "name",
+					"label": "setting.menu_name",
+					"type": "text",
+					"required": true,
+					"grid": 3
+				},
+				{
+					"name": "url",
+					"label": "setting.menu_url",
+					"type": "url",
+					"required": true,
+					"placeholder": "https://…",
+					"grid": 5
+				}
+			]
+		},
+		{
 			"name": "link_url",
 			"label": "setting.link_url",
 			"type": "url",

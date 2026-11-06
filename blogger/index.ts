@@ -63,6 +63,9 @@ const EDITABLE = [
 	"published_at",
 ] as const;
 
+/** How many links the shop's own menu may have. */
+const MENU_MAX = 5;
+
 /** How many pictures sent as base64 one save may store. */
 const PICTURES_MAX = 20;
 
@@ -365,6 +368,7 @@ function frameOf(ctx: RouteContext, title: string, path: string): Frame {
 		shop: ctx.shop.name,
 		home: ctx.store_url,
 		link: linkOf(ctx),
+		menu: menuOf(ctx),
 		t: ctx.t,
 		type: "website",
 		logo: fullUrl(ctx, ctx.shop.logo),
@@ -381,6 +385,25 @@ function linkOf(ctx: RouteContext): Frame["link"] {
 	const url = String(ctx.config.link_url ?? "").trim();
 	if (!url.startsWith("https://")) return null;
 	return { url, text: String(ctx.config.link_text ?? "").trim() };
+}
+
+/**
+ * The shop's own menu from the settings.
+ * Only links of the site (`/…`) and http(s) links are kept.
+ * @param ctx The route's context.
+ * @returns The links (at most `MENU_MAX`), or null for the usual menu.
+ */
+function menuOf(ctx: RouteContext): Frame["menu"] {
+	if (ctx.config.menu_custom !== true) return null;
+	const rows = Array.isArray(ctx.config.menu) ? ctx.config.menu : [];
+	const menu: { name: string; url: string }[] = [];
+	for (const row of rows.slice(0, MENU_MAX)) {
+		if (typeof row !== "object" || row === null) continue;
+		const name = String(row.name ?? "").trim();
+		const url = String(row.url ?? "").trim();
+		if (name && /^(https?:\/\/|\/)/.test(url)) menu.push({ name, url });
+	}
+	return menu;
 }
 
 /**

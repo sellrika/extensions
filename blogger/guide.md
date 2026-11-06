@@ -55,8 +55,16 @@ Press the bin on its row and confirm. The post and its pictures are removed.
 In the extension's settings you can set a **Button link** and a **Button text**.
 
 - The blog's buttons then go to that link, for example your own website.
-- The links to your online store (Shop, Track order) are hidden.
 - Left empty, the buttons go to your online store, with the text "Visit the shop".
+
+## Menu
+
+By default the menu at the top shows **Shop**, **Blog** and **Track order**.
+
+- Turn on **Own menu** in the extension's settings to choose the links yourself.
+- Add up to 5 links. Each has a name and a link.
+- With **Own menu** on and no links, the blog shows no menu.
+- The footer shows the same links, plus the RSS feed.
 
 ## For AI assistants
 

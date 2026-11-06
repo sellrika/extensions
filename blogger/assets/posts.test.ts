@@ -390,7 +390,7 @@ test("the feed carries whole posts with full addresses, and nothing can break it
 	expect(xml).toContain("Hi ]]]]><![CDATA[> there");
 });
 
-test("the blog's own button link replaces the links to the shop", () => {
+test("the blog's own button link replaces the store button", () => {
 	const frame: Frame = {
 		lang: "en",
 		title: "Blog",
@@ -408,14 +408,55 @@ test("the blog's own button link replaces the links to the shop", () => {
 	const plain = pageHtml(frame, "");
 	expect(plain).toContain('href="https://shop.test/track"');
 	expect(plain).toContain("store.visit");
-	// a link of its own: the buttons go there, the shop links are gone
+	// a link of its own: the buttons go there
 	frame.link = { url: "https://sellrika.com/?a=1&b=2", text: "Try <it>" };
 	const own = pageHtml(frame, "");
 	expect(own).toContain('href="https://sellrika.com/?a=1&amp;b=2"');
 	expect(own).toContain("Try &lt;it&gt;");
 	expect(own).not.toContain("store.visit");
-	expect(own.slice(own.indexOf("<body"))).not.toContain("shop.test");
 	// no text set: the usual text
 	frame.link = { url: "https://sellrika.com", text: "" };
 	expect(pageHtml(frame, "")).toContain("store.visit");
+});
+
+test("the shop's own menu replaces Shop, Blog and Track order", () => {
+	const frame: Frame = {
+		lang: "en",
+		title: "Blog",
+		description: "",
+		url: "https://shop.test/blogs",
+		image: null,
+		shop: "Main Shop",
+		home: "https://shop.test",
+		t: (key: string) => key,
+		type: "website",
+		logo: null,
+		data: [],
+	};
+	/**
+	 * The page's body, without the head tags.
+	 * @returns The HTML from `<body` on.
+	 */
+	function body() {
+		const html = pageHtml(frame, "");
+		return html.slice(html.indexOf("<body"));
+	}
+	// no menu set: the usual three links
+	expect(body()).toContain(">store.shop</a>");
+	expect(body()).toContain('href="https://shop.test/track"');
+	// an own menu: only its links, in the header and the footer
+	frame.menu = [
+		{ name: "Pricing & plans", url: "https://sellrika.com/pricing" },
+		{ name: "Docs", url: "/docs" },
+	];
+	const own = body();
+	expect(own.match(/>Pricing &amp; plans<\/a>/g)).toHaveLength(2);
+	expect(own).toContain('<a href="/docs">Docs</a>');
+	expect(own).not.toContain("store.shop");
+	expect(own).not.toContain("store.track");
+	expect(own).not.toContain('class="blg-nav"><a class="is-on"');
+	// an own menu with no links: no menu at all
+	frame.menu = [];
+	expect(body()).not.toContain('class="blg-nav"');
+	expect(body()).toContain("store.rss");
 });
