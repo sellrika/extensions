@@ -389,3 +389,33 @@ test("the feed carries whole posts with full addresses, and nothing can break it
 	// a "]]>" in the body does not end the CDATA block early
 	expect(xml).toContain("Hi ]]]]><![CDATA[> there");
 });
+
+test("the blog's own button link replaces the links to the shop", () => {
+	const frame: Frame = {
+		lang: "en",
+		title: "Blog",
+		description: "",
+		url: "https://shop.test/blogs",
+		image: null,
+		shop: "Main Shop",
+		home: "https://shop.test",
+		t: (key: string) => key,
+		type: "website",
+		logo: null,
+		data: [],
+	};
+	// no link: the buttons lead to the store
+	const plain = pageHtml(frame, "");
+	expect(plain).toContain('href="https://shop.test/track"');
+	expect(plain).toContain("store.visit");
+	// a link of its own: the buttons go there, the shop links are gone
+	frame.link = { url: "https://sellrika.com/?a=1&b=2", text: "Try <it>" };
+	const own = pageHtml(frame, "");
+	expect(own).toContain('href="https://sellrika.com/?a=1&amp;b=2"');
+	expect(own).toContain("Try &lt;it&gt;");
+	expect(own).not.toContain("store.visit");
+	expect(own.slice(own.indexOf("<body"))).not.toContain("shop.test");
+	// no text set: the usual text
+	frame.link = { url: "https://sellrika.com", text: "" };
+	expect(pageHtml(frame, "")).toContain("store.visit");
+});
