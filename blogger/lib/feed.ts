@@ -23,6 +23,8 @@ export type FeedInfo = {
 	home: string;
 	/** The blog's own full address: `ctx.storefront.url`. */
 	blog: string;
+	/** The full address of a picture: on the app's own host. */
+	picture: (path: string) => string;
 	/** The language of the posts, like "en". */
 	lang: string;
 };
@@ -38,14 +40,27 @@ function cdata(html: string): string {
 }
 
 /**
- * Give every picture and link of a body the store's full address:
+ * Give every picture and link of a body a full address:
  * a feed reader does not know which site a `/uploads/…` path is on.
+ * A picture loads from the app's own host, a link goes to the store.
  * @param html The post's body.
- * @param home The store's address.
+ * @param info Where the store and the pictures are.
  * @returns The body with full addresses.
  */
-function absolute(html: string, home: string): string {
-	return html.replace(/\b(src|href)="\/(?!\/)/g, `$1="${home}/`);
+function absolute(html: string, info: FeedInfo): string {
+	return html.replace(/\b(src|href)="(\/(?!\/)[^"]*)"/g, full);
+
+	/**
+	 * One attribute with its full address.
+	 * @param _ The whole match.
+	 * @param name `src` or `href`.
+	 * @param path The path it had.
+	 * @returns The attribute with the full address.
+	 */
+	function full(_: string, name: string, path: string): string {
+		const url = name === "src" ? info.picture(path) : info.home + path;
+		return `${name}="${url}"`;
+	}
 }
 
 /**
@@ -55,7 +70,6 @@ function absolute(html: string, home: string): string {
  * @returns The `<item>` XML.
  */
 function item(post: Post, info: FeedInfo): string {
-	const home = info.home;
 	const url = blogUrl(info.blog, postPath(post));
 	const date = post.published_at
 		? `<pubDate>${new Date(post.published_at).toUTCString()}</pubDate>`
@@ -66,7 +80,7 @@ function item(post: Post, info: FeedInfo): string {
 	const cover = post.cover
 		? `<p><img src="${esc(post.cover)}" alt="${esc(post.title)}"></p>`
 		: "";
-	return `<item><title>${esc(post.title)}</title><link>${esc(url)}</link><guid isPermaLink="true">${esc(url)}</guid>${date}<description>${esc(post.summary)}</description>${tags}<content:encoded>${cdata(absolute(cover + post.body, home))}</content:encoded></item>`;
+	return `<item><title>${esc(post.title)}</title><link>${esc(url)}</link><guid isPermaLink="true">${esc(url)}</guid>${date}<description>${esc(post.summary)}</description>${tags}<content:encoded>${cdata(absolute(cover + post.body, info))}</content:encoded></item>`;
 }
 
 /**
