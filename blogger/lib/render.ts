@@ -119,7 +119,35 @@ export function pageHtml(frame: Frame, body: string): string {
 	const header = `<header class="blg-site"><a class="blg-site-name" href="${brand}">${shop}</a>${nav}${visit}</header>`;
 	const band = `<section class="blg-band"><div class="blg-band-in"><p class="blg-band-title">${esc(t(own ? "store.band_link" : "store.band"))}</p><a class="blg-btn blg-btn-light" href="${to}">${label} <span aria-hidden="true">↗</span></a></div></section>`;
 	const footer = `<footer class="blg-foot-site"><a class="blg-site-name" href="${brand}">${shop}</a><nav class="blg-foot-links">${links.replace(' class="is-on"', "").replace(' aria-current="page"', "")}<a href="${feed}" type="application/rss+xml">${esc(t("store.rss"))}</a></nav><small>© ${new Date().getFullYear()} ${shop}</small></footer>`;
-	return `<!doctype html><html lang="${esc(frame.lang)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${headTags(frame)}<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="${FONTS}"><style>${BLOG_CSS}</style></head><body class="blg">${header}<main>${body}</main>${band}${footer}</body></html>`;
+	return `<!doctype html><html lang="${esc(frame.lang)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${headTags(frame)}<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="${FONTS}"><style>${BLOG_CSS}</style></head><body class="blg">${localLinks(`${header}<main>${body}</main>${band}${footer}`, frame.blog)}</body></html>`;
+}
+
+/**
+ * Point the page's `/blogs` links at the blog's own path.
+ * The pages build their links with `BLOG_PATH`. On a host of its own
+ * the blog is at `/`, so `/blogs/x` would cost a redirect per click.
+ * Old `/blogs` links in post bodies are moved the same way.
+ * ponytail: one rewrite of the finished page, not a base path through
+ * every link builder. Pass the base down if a link ever needs it earlier.
+ * @param html The page's body HTML.
+ * @param blog The blog's own full address.
+ * @returns The HTML with `/blogs` links on the blog's own path.
+ */
+function localLinks(html: string, blog: string): string {
+	const base = new URL(blog).pathname.replace(/\/$/, "");
+	if (base === BLOG_PATH) return html;
+	const links = new RegExp(`(href=")${BLOG_PATH}(?:/|(?=[?#"]))`, "g");
+	return html.replace(links, `$1${base}/`);
+}
+
+/**
+ * The address of the site the blog belongs to, for search engines:
+ * the blog's own button link when the shop set one, else the store.
+ * @param frame What goes around the page.
+ * @returns The full address.
+ */
+function siteOf(frame: Frame): string {
+	return frame.link?.url ?? frame.home;
 }
 
 /**
@@ -218,7 +246,7 @@ function shopData(frame: Frame): object {
 	return {
 		"@type": "Organization",
 		name: frame.shop,
-		url: frame.home,
+		url: siteOf(frame),
 		...(frame.logo && { logo: { "@type": "ImageObject", url: frame.logo } }),
 	};
 }
@@ -232,7 +260,7 @@ function shopData(frame: Frame): object {
  */
 function trailData(frame: Frame, blogUrl: string, post: string | null): object {
 	const items = [
-		[frame.shop, frame.home],
+		[frame.shop, siteOf(frame)],
 		[frame.t("store.title"), blogUrl],
 		...(post ? [[post, frame.url]] : []),
 	];

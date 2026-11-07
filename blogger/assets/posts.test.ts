@@ -492,3 +492,39 @@ test("full links follow the blog's own address", () => {
 	expect(blogUrl(own, "/blogs?page=2")).toBe("https://blog.test/?page=2");
 	expect(blogUrl(own, "/blogs/feed.xml")).toBe("https://blog.test/feed.xml");
 });
+
+test("on a host of its own, the page's links skip the /blogs redirect", () => {
+	const frame: Frame = {
+		lang: "en",
+		title: "Blog",
+		description: "",
+		url: "https://blog.test/",
+		image: null,
+		shop: "Main Shop",
+		home: "https://shop.test",
+		blog: "https://blog.test",
+		t: (key: string) => key,
+		type: "website",
+		logo: null,
+		data: [],
+	};
+	const body =
+		'<a href="/blogs">a</a><a href="/blogs/tea">b</a><a href="/blogs?page=2">c</a><a href="/blogsy">d</a>';
+	const own = pageHtml(frame, body);
+	expect(own).toContain(
+		'<a href="/">a</a><a href="/tea">b</a><a href="/?page=2">c</a>',
+	);
+	// a path that only starts like /blogs stays
+	expect(own).toContain('href="/blogsy"');
+	// on the store, the links stay below /blogs
+	const store = pageHtml({ ...frame, blog: "https://shop.test/blogs" }, body);
+	expect(store).toContain('<a href="/blogs/tea">b</a>');
+	// search engines see the blog's own site, not the store
+	frame.link = { url: "https://sellrika.com", text: "" };
+	frame.data = listData(frame, [], "https://blog.test/", () => null);
+	const html = pageHtml(frame, "");
+	expect(html).toContain(
+		'"publisher":{"@type":"Organization","name":"Main Shop","url":"https://sellrika.com"',
+	);
+	expect(html).toContain('"item":"https://sellrika.com"');
+});
