@@ -189,7 +189,7 @@ test("publish: the post is on the store with its head tags, picture, tag, menu l
 	// the post's own back link leads to the blog, not to the shop
 	await expect(
 		visitor.getByRole("link", { name: "Back to blog" }),
-	).toHaveAttribute("href", "/blogs");
+	).toHaveAttribute("href", `${STORE}/blogs`);
 	// share links, with the post's own address
 	await expect(visitor.getByRole("link", { name: "Facebook" })).toHaveAttribute(
 		"href",
@@ -230,16 +230,27 @@ test("publish: the post is on the store with its head tags, picture, tag, menu l
 	expect(sitemap).toContain(`<loc>${STORE}/blogs/${SLUG}</loc>`);
 });
 
-test("the server refuses picture data in a body and a link another post uses; a script is cleaned away", async () => {
+test("the server stores picture data in a body, refuses a plain http picture and a link another post uses; a script is cleaned away", async () => {
 	const post = (data: Record<string, unknown>) =>
 		admin.request.post("/ext/blogger/posts", { data });
+	// picture data is saved as an upload: the body keeps only its path
 	const base64 = await post({
 		title: "Data picture",
 		status: "draft",
 		body: '<p>x</p><img src="data:image/png;base64,iVBORw0KGgo=">',
 	});
-	expect(base64.status()).toBe(422);
-	expect((await base64.json()).errors.body).toContain("picture");
+	expect(base64.status()).toBe(200);
+	const stored = (await base64.json()).body;
+	expect(stored).toContain('src="/uploads/');
+	expect(stored).not.toContain("data:image");
+	// a picture that is neither our upload nor an https link is refused
+	const http = await post({
+		title: "Http picture",
+		status: "draft",
+		body: '<p>x</p><img src="http://pictures.test/a.png">',
+	});
+	expect(http.status()).toBe(422);
+	expect((await http.json()).errors.body).toContain("picture");
 	const taken = await post({ title: "Again", slug: SLUG, status: "draft" });
 	expect((await taken.json()).errors.slug).toBe(
 		"Another post already uses this link.",

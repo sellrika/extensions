@@ -296,7 +296,11 @@ function lookOf(ctx: RouteContext): Look {
 		dateStyle: "long",
 		timeZone: ctx.shop.timezone || undefined,
 	});
-	return { t: ctx.t, date: (iso) => format.format(new Date(iso)) };
+	return {
+		t: ctx.t,
+		blog: blogOf(ctx),
+		date: (iso) => format.format(new Date(iso)),
+	};
 }
 
 /**

@@ -208,6 +208,7 @@ test("the store pages escape what a person typed and link posts, tags and pages"
 	const look = {
 		t: (key: string, params?: Record<string, string | number>) =>
 			params ? `${key}:${Object.values(params).join(",")}` : key,
+		blog: "https://shop.test/blogs",
 		date: () => "1 Oct 2026",
 	};
 	const evil = meta({
@@ -237,16 +238,16 @@ test("the store pages escape what a person typed and link posts, tags and pages"
 	expect(first).not.toContain("<script>");
 	expect(first).toContain("&lt;script&gt;x&lt;/script&gt;");
 	expect(first).toContain('<h1 class="blg-h1">Blog</h1>');
-	expect(first).toContain('href="/blogs/tag/r-d"');
+	expect(first).toContain('href="https://shop.test/blogs/tag/r-d"');
 	expect(first).toContain('src="/uploads/3/extensions/c.webp"');
 	// the first post of the first page is drawn big, the others in the grid
 	expect(first).toContain(
-		'<article class="blg-feat"><a class="blg-feat-link" href="/blogs/a%20b"',
+		'<article class="blg-feat"><a class="blg-feat-link" href="https://shop.test/blogs/a%20b"',
 	);
 	expect(first.match(/class="blg-card"/g)).toHaveLength(1);
 	// the topic tabs carry their number of posts
 	expect(first).toContain(
-		'<a class="blg-tab" href="/blogs/tag/r-d">R&amp;D<small>1</small></a>',
+		'<a class="blg-tab" href="https://shop.test/blogs/tag/r-d">R&amp;D<small>1</small></a>',
 	);
 	// page 1 of 3: no way back, the numbers, on to the second
 	expect(first).not.toContain('rel="prev"');
@@ -254,7 +255,7 @@ test("the store pages escape what a person typed and link posts, tags and pages"
 		'<span class="blg-page is-on" aria-current="page">1</span>',
 	);
 	expect(first).toContain(
-		'rel="next" aria-label="store.older" href="/blogs?page=2"',
+		'rel="next" aria-label="store.older" href="https://shop.test/blogs?page=2"',
 	);
 	// a tag's list and a later page have no big post; page 2 leads back to the plain address
 	const tagged = listHtml(
@@ -263,7 +264,7 @@ test("the store pages escape what a person typed and link posts, tags and pages"
 	);
 	expect(tagged).not.toContain("blg-feat");
 	expect(tagged).toContain(
-		'rel="prev" aria-label="store.newer" href="/blogs/tag/r-d"',
+		'rel="prev" aria-label="store.newer" href="https://shop.test/blogs/tag/r-d"',
 	);
 	expect(
 		listHtml(
@@ -285,10 +286,12 @@ test("the store pages escape what a person typed and link posts, tags and pages"
 	expect(page).toContain("<p>Body text</p>");
 	expect(page).toContain("&quot;quoted&quot; &amp; &lt;b&gt;");
 	expect(page).toContain(
-		'<a class="blg-back" href="/blogs" aria-label="store.back">',
+		'<a class="blg-back" href="https://shop.test/blogs" aria-label="store.back">',
 	);
 	// the posts to read next, and the shop as the author
-	expect(page).toContain('class="blg-card-link" href="/blogs/next"');
+	expect(page).toContain(
+		'class="blg-card-link" href="https://shop.test/blogs/next"',
+	);
 	expect(page).toContain(
 		'<span class="blg-avatar" aria-hidden="true">MS</span>',
 	);
@@ -494,6 +497,29 @@ test("full links follow the blog's own address", () => {
 });
 
 test("on a host of its own, the page's links skip the /blogs redirect", () => {
+	const look = {
+		t: (key: string) => key,
+		blog: "https://blog.test",
+		date: () => "1 Oct 2026",
+	};
+	const list = listHtml(
+		{
+			title: "Blog",
+			intro: "",
+			posts: [meta({ slug: "tea", tags: ["Tips"] })],
+			tags: ["Tips"],
+			counts: { tips: 1 },
+			total: 1,
+			tag: "",
+			page: 1,
+			last: 2,
+		},
+		look,
+	);
+	expect(list).toContain('href="https://blog.test/tea"');
+	expect(list).toContain('href="https://blog.test/tag/tips"');
+	expect(list).toContain('href="https://blog.test/?page=2"');
+	expect(list).not.toContain('href="/blogs');
 	const frame: Frame = {
 		lang: "en",
 		title: "Blog",
@@ -508,17 +534,6 @@ test("on a host of its own, the page's links skip the /blogs redirect", () => {
 		logo: null,
 		data: [],
 	};
-	const body =
-		'<a href="/blogs">a</a><a href="/blogs/tea">b</a><a href="/blogs?page=2">c</a><a href="/blogsy">d</a>';
-	const own = pageHtml(frame, body);
-	expect(own).toContain(
-		'<a href="/">a</a><a href="/tea">b</a><a href="/?page=2">c</a>',
-	);
-	// a path that only starts like /blogs stays
-	expect(own).toContain('href="/blogsy"');
-	// on the store, the links stay below /blogs
-	const store = pageHtml({ ...frame, blog: "https://shop.test/blogs" }, body);
-	expect(store).toContain('<a href="/blogs/tea">b</a>');
 	// search engines see the blog's own site, not the store
 	frame.link = { url: "https://sellrika.com", text: "" };
 	frame.data = listData(frame, [], "https://blog.test/", () => null);

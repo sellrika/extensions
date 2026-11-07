@@ -29,6 +29,8 @@ const FONTS =
 /** What both pages need to write their texts. */
 export type Look = {
 	t: Translate;
+	/** The blog's own full address: `ctx.storefront.url`. */
+	blog: string;
 	/** Formats a post's date in the visitor's language. */
 	date: (iso: string) => string;
 };
@@ -110,8 +112,8 @@ export function pageHtml(frame: Frame, body: string): string {
 	const own = frame.link;
 	const to = own ? esc(own.url) : home;
 	const label = esc(own?.text || t("store.visit"));
-	const blog = esc(blogUrl(frame.blog, BLOG_PATH));
-	const feed = esc(blogUrl(frame.blog, `${BLOG_PATH}/feed.xml`));
+	const blog = href(frame.blog, BLOG_PATH);
+	const feed = href(frame.blog, `${BLOG_PATH}/feed.xml`);
 	const brand = own ? blog : home;
 	const links = menuLinks(frame);
 	const nav = links ? `<nav class="blg-nav">${links}</nav>` : "";
@@ -119,25 +121,19 @@ export function pageHtml(frame: Frame, body: string): string {
 	const header = `<header class="blg-site"><a class="blg-site-name" href="${brand}">${shop}</a>${nav}${visit}</header>`;
 	const band = `<section class="blg-band"><div class="blg-band-in"><p class="blg-band-title">${esc(t(own ? "store.band_link" : "store.band"))}</p><a class="blg-btn blg-btn-light" href="${to}">${label} <span aria-hidden="true">↗</span></a></div></section>`;
 	const footer = `<footer class="blg-foot-site"><a class="blg-site-name" href="${brand}">${shop}</a><nav class="blg-foot-links">${links.replace(' class="is-on"', "").replace(' aria-current="page"', "")}<a href="${feed}" type="application/rss+xml">${esc(t("store.rss"))}</a></nav><small>© ${new Date().getFullYear()} ${shop}</small></footer>`;
-	return `<!doctype html><html lang="${esc(frame.lang)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${headTags(frame)}<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="${FONTS}"><style>${BLOG_CSS}</style></head><body class="blg">${localLinks(`${header}<main>${body}</main>${band}${footer}`, frame.blog)}</body></html>`;
+	return `<!doctype html><html lang="${esc(frame.lang)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${headTags(frame)}<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="${FONTS}"><style>${BLOG_CSS}</style></head><body class="blg">${header}<main>${body}</main>${band}${footer}</body></html>`;
 }
 
 /**
- * Point the page's `/blogs` links at the blog's own path.
- * The pages build their links with `BLOG_PATH`. On a host of its own
- * the blog is at `/`, so `/blogs/x` would cost a redirect per click.
- * Old `/blogs` links in post bodies are moved the same way.
- * ponytail: one rewrite of the finished page, not a base path through
- * every link builder. Pass the base down if a link ever needs it earlier.
- * @param html The page's body HTML.
+ * One link of the blog, as an escaped `href` value.
+ * Every link is built from the blog's own address, so it is right
+ * on the store's `/blogs` and on a host of its own.
  * @param blog The blog's own full address.
- * @returns The HTML with `/blogs` links on the blog's own path.
+ * @param path A path that starts with `BLOG_PATH`.
+ * @returns The full address, escaped for an attribute.
  */
-function localLinks(html: string, blog: string): string {
-	const base = new URL(blog).pathname.replace(/\/$/, "");
-	if (base === BLOG_PATH) return html;
-	const links = new RegExp(`(href=")${BLOG_PATH}(?:/|(?=[?#"]))`, "g");
-	return html.replace(links, `$1${base}/`);
+function href(blog: string, path: string): string {
+	return esc(blogUrl(blog, path));
 }
 
 /**
@@ -165,7 +161,7 @@ function menuLinks(frame: Frame): string {
 	}
 	const home = esc(frame.home);
 	const t = frame.t;
-	return `<a href="${home}">${esc(t("store.shop"))}</a><a class="is-on" href="${esc(blogUrl(frame.blog, BLOG_PATH))}" aria-current="page">${esc(t("store.title"))}</a><a href="${home}/track">${esc(t("store.track"))}</a>`;
+	return `<a href="${home}">${esc(t("store.shop"))}</a><a class="is-on" href="${href(frame.blog, BLOG_PATH)}" aria-current="page">${esc(t("store.title"))}</a><a href="${home}/track">${esc(t("store.track"))}</a>`;
 }
 
 /**
@@ -432,7 +428,7 @@ function featured(post: Meta, look: Look): string {
 	const summary = post.summary
 		? `<span class="blg-feat-summary">${esc(post.summary)}</span>`
 		: "";
-	return `<article class="blg-feat"><a class="blg-feat-link" href="${postPath(post)}">${picture(post, "blg-feat-img", false)}<div class="blg-feat-text"><span class="blg-badge">${esc(look.t("store.featured"))}</span>${metaLine(post, look)}<h2 class="blg-feat-title">${esc(post.title)}</h2>${summary}<span class="blg-btn blg-btn-accent">${esc(look.t("store.read"))} <span aria-hidden="true">→</span></span></div></a></article>`;
+	return `<article class="blg-feat"><a class="blg-feat-link" href="${href(look.blog, postPath(post))}">${picture(post, "blg-feat-img", false)}<div class="blg-feat-text"><span class="blg-badge">${esc(look.t("store.featured"))}</span>${metaLine(post, look)}<h2 class="blg-feat-title">${esc(post.title)}</h2>${summary}<span class="blg-btn blg-btn-accent">${esc(look.t("store.read"))} <span aria-hidden="true">→</span></span></div></a></article>`;
 }
 
 /**
@@ -445,7 +441,7 @@ function card(post: Meta, look: Look): string {
 	const summary = post.summary
 		? `<span class="blg-summary">${esc(post.summary)}</span>`
 		: "";
-	return `<article class="blg-card"><a class="blg-card-link" href="${postPath(post)}">${picture(post, "blg-thumb", true)}${metaLine(post, look)}<h3 class="blg-card-title">${esc(post.title)}</h3>${summary}</a></article>`;
+	return `<article class="blg-card"><a class="blg-card-link" href="${href(look.blog, postPath(post))}">${picture(post, "blg-thumb", true)}${metaLine(post, look)}<h3 class="blg-card-title">${esc(post.title)}</h3>${summary}</a></article>`;
 }
 
 /**
@@ -458,7 +454,7 @@ function card(post: Meta, look: Look): string {
 function row(post: Meta, n: number, look: Look): string {
 	const tag = post.tags[0] ? `${esc(post.tags[0])} · ` : "";
 	const date = post.published_at ? dateTag(post.published_at, look) : "";
-	return `<article class="blg-row"><a class="blg-row-link" href="${postPath(post)}"><span class="blg-row-n">${String(n).padStart(2, "0")}</span><div class="blg-row-text"><span class="blg-row-meta">${tag}${date}</span><h3 class="blg-row-title">${esc(post.title)}</h3></div>${picture(post, "blg-row-img", true)}</a></article>`;
+	return `<article class="blg-row"><a class="blg-row-link" href="${href(look.blog, postPath(post))}"><span class="blg-row-n">${String(n).padStart(2, "0")}</span><div class="blg-row-text"><span class="blg-row-meta">${tag}${date}</span><h3 class="blg-row-title">${esc(post.title)}</h3></div>${picture(post, "blg-row-img", true)}</a></article>`;
 }
 
 /**
@@ -490,10 +486,14 @@ function tagRow(
 	look: Look,
 ): string {
 	if (!tags.length) return "";
-	const links = [tab(look.t("store.all"), BLOG_PATH, total, !on)];
+	const links = [
+		tab(look.t("store.all"), href(look.blog, BLOG_PATH), total, !on),
+	];
 	for (const tag of tags) {
 		const slug = slugify(tag);
-		links.push(tab(tag, tagPath(tag), counts[slug] ?? 0, slug === on));
+		links.push(
+			tab(tag, href(look.blog, tagPath(tag)), counts[slug] ?? 0, slug === on),
+		);
 	}
 	return `<nav class="blg-tabs">${links.join("")}</nav>`;
 }
@@ -523,11 +523,11 @@ function pager(base: string, page: number, last: number, look: Look): string {
 	const older = esc(look.t("store.older"));
 	const prev =
 		page > 1
-			? `<a class="blg-btn blg-btn-line" rel="prev" aria-label="${newer}" href="${pagePath(base, page - 1)}">← ${newer}</a>`
+			? `<a class="blg-btn blg-btn-line" rel="prev" aria-label="${newer}" href="${href(look.blog, pagePath(base, page - 1))}">← ${newer}</a>`
 			: `<span class="blg-btn blg-btn-line is-off">← ${newer}</span>`;
 	const next =
 		page < last
-			? `<a class="blg-btn blg-btn-line" rel="next" aria-label="${older}" href="${pagePath(base, page + 1)}">${older} →</a>`
+			? `<a class="blg-btn blg-btn-line" rel="next" aria-label="${older}" href="${href(look.blog, pagePath(base, page + 1))}">${older} →</a>`
 			: `<span class="blg-btn blg-btn-line is-off">${older} →</span>`;
 	const numbers: string[] = [];
 	const from = Math.max(1, page - PAGER_SPAN);
@@ -536,7 +536,7 @@ function pager(base: string, page: number, last: number, look: Look): string {
 		numbers.push(
 			n === page
 				? `<span class="blg-page is-on" aria-current="page">${n}</span>`
-				: `<a class="blg-page" href="${pagePath(base, n)}">${n}</a>`,
+				: `<a class="blg-page" href="${href(look.blog, pagePath(base, n))}">${n}</a>`,
 		);
 	return `<nav class="blg-pager" aria-label="${esc(look.t("store.page_of", { page, last }))}">${prev}<span class="blg-pages">${numbers.join("")}</span>${next}</nav>`;
 }
@@ -677,12 +677,15 @@ export function postHtml(
 		? `<div class="blg-cover-wrap"><img class="blg-cover" src="${esc(post.cover)}" alt="${esc(post.title)}" fetchpriority="high"></div>`
 		: "";
 	const tags = post.tags
-		.map((tag) => `<a class="blg-tag" href="${tagPath(tag)}">${esc(tag)}</a>`)
+		.map(
+			(tag) =>
+				`<a class="blg-tag" href="${href(look.blog, tagPath(tag))}">${esc(tag)}</a>`,
+		)
 		.join("");
 	const next = more.length
-		? `<section class="blg-next"><div class="blg-sec-head"><h2>${esc(look.t("store.more"))}</h2><a class="blg-all" href="${BLOG_PATH}">${esc(look.t("store.all_posts"))} →</a></div><div class="blg-grid">${more.map((one) => card(one, look)).join("")}</div></section>`
+		? `<section class="blg-next"><div class="blg-sec-head"><h2>${esc(look.t("store.more"))}</h2><a class="blg-all" href="${href(look.blog, BLOG_PATH)}">${esc(look.t("store.all_posts"))} →</a></div><div class="blg-grid">${more.map((one) => card(one, look)).join("")}</div></section>`
 		: "";
-	return `<article class="blg-post"><header class="blg-post-head"><nav class="blg-crumb"><a class="blg-back" href="${BLOG_PATH}" aria-label="${esc(look.t("store.back"))}">← ${esc(look.t("store.title"))}</a>${topic}</nav><h1 class="blg-title">${esc(post.title)}</h1>${lead}${byline}</header>${cover}<div class="blg-body rich-html">${post.body}</div><footer class="blg-end"><nav class="blg-tags">${tags}</nav>${share(post, url, look)}</footer></article>${next}`;
+	return `<article class="blg-post"><header class="blg-post-head"><nav class="blg-crumb"><a class="blg-back" href="${href(look.blog, BLOG_PATH)}" aria-label="${esc(look.t("store.back"))}">← ${esc(look.t("store.title"))}</a>${topic}</nav><h1 class="blg-title">${esc(post.title)}</h1>${lead}${byline}</header>${cover}<div class="blg-body rich-html">${post.body}</div><footer class="blg-end"><nav class="blg-tags">${tags}</nav>${share(post, url, look)}</footer></article>${next}`;
 }
 
 /**
