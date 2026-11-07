@@ -424,15 +424,28 @@ function menuOf(ctx: RouteContext): Frame["menu"] {
 }
 
 /**
- * A full address for a path of the store.
- * An upload path gets the store's address in front; an https link stays.
+ * A full address for a picture: an upload or an https link.
  * @param ctx The route's context.
  * @param path The path or link, or null.
  * @returns The full address, or null.
  */
 function fullUrl(ctx: RouteContext, path: string | null): string | null {
-	if (!path) return null;
-	return path.startsWith("/") ? `${ctx.store_url}${path}` : path;
+	return path ? pictureUrl(ctx, path) : null;
+}
+
+/**
+ * The full address of one picture, on the app's own host.
+ * Never the shop's domain: the CDN in front of the app's host
+ * caches a picture only there, for every store.
+ * An older app has no `uploads.url`: then the store's address.
+ * @param ctx The route's context.
+ * @param path A `/uploads/…` path or an https link.
+ * @returns The full address.
+ */
+function pictureUrl(ctx: RouteContext, path: string): string {
+	const own = ctx.uploads as { url?: (path: string) => string };
+	const url = typeof own.url === "function" ? own.url(path) : path;
+	return url.startsWith("/") ? `${ctx.store_url}${url}` : url;
 }
 
 /**
@@ -472,6 +485,7 @@ export const publicRoutes: Routes = {
 				description: ctx.t("store.description", { shop: ctx.shop.name }),
 				home: ctx.store_url,
 				blog: blogOf(ctx),
+				picture: (path) => pictureUrl(ctx, path),
 				lang: ctx.locale,
 			},
 			posts,

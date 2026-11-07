@@ -366,6 +366,14 @@ test("a post page tells search engines and AI search what it is", () => {
 });
 
 test("the feed carries whole posts with full addresses, and nothing can break its XML", () => {
+	/**
+	 * A picture on the app's own host, like `ctx.uploads.url`.
+	 * @param path The picture's path.
+	 * @returns Its full address.
+	 */
+	function appPicture(path: string) {
+		return `https://app.test${path}`;
+	}
 	const post: Post = {
 		...meta({
 			title: "Tea & <cake>",
@@ -382,6 +390,7 @@ test("the feed carries whole posts with full addresses, and nothing can break it
 			description: "News",
 			home: "https://shop.test",
 			blog: "https://shop.test/blogs",
+			picture: appPicture,
 			lang: "en",
 		},
 		[post],
@@ -392,9 +401,11 @@ test("the feed carries whole posts with full addresses, and nothing can break it
 	expect(xml).toContain(
 		'<atom:link href="https://shop.test/blogs/feed.xml" rel="self"',
 	);
-	// pictures get the store's address; a link to another site stays as it is
-	expect(xml).toContain('src="https://shop.test/uploads/1/a.webp"');
-	expect(xml).toContain('src="https://shop.test/uploads/1/c.webp"');
+	// pictures load from the app's own host, never the shop's;
+	// a link to another site stays as it is
+	expect(xml).toContain('src="https://app.test/uploads/1/a.webp"');
+	expect(xml).toContain('src="https://app.test/uploads/1/c.webp"');
+	expect(xml).not.toContain("https://shop.test/uploads");
 	expect(xml).toContain('href="//evil.test"');
 	// a "]]>" in the body does not end the CDATA block early
 	expect(xml).toContain("Hi ]]]]><![CDATA[> there");
