@@ -414,6 +414,13 @@ test("the blog's own button link replaces the store button", () => {
 	};
 	// no link: the buttons lead to the store
 	const plain = pageHtml(frame, "");
+	// the footer's feed link is on the blog's own address
+	expect(plain).toContain(
+		'href="https://shop.test/blogs/feed.xml" type="application/rss+xml"',
+	);
+	expect(pageHtml({ ...frame, blog: "https://blog.test" }, "")).toContain(
+		'href="https://blog.test/feed.xml" type="application/rss+xml"',
+	);
 	expect(plain).toContain('href="https://shop.test/track"');
 	expect(plain).toContain("store.visit");
 	// a link of its own: the buttons go there

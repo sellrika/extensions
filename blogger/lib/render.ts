@@ -110,13 +110,15 @@ export function pageHtml(frame: Frame, body: string): string {
 	const own = frame.link;
 	const to = own ? esc(own.url) : home;
 	const label = esc(own?.text || t("store.visit"));
-	const brand = own ? BLOG_PATH : home;
+	const blog = esc(blogUrl(frame.blog, BLOG_PATH));
+	const feed = esc(blogUrl(frame.blog, `${BLOG_PATH}/feed.xml`));
+	const brand = own ? blog : home;
 	const links = menuLinks(frame);
 	const nav = links ? `<nav class="blg-nav">${links}</nav>` : "";
 	const visit = `<a class="blg-btn blg-btn-line" href="${to}">${label} <span aria-hidden="true">↗</span></a>`;
 	const header = `<header class="blg-site"><a class="blg-site-name" href="${brand}">${shop}</a>${nav}${visit}</header>`;
 	const band = `<section class="blg-band"><div class="blg-band-in"><p class="blg-band-title">${esc(t(own ? "store.band_link" : "store.band"))}</p><a class="blg-btn blg-btn-light" href="${to}">${label} <span aria-hidden="true">↗</span></a></div></section>`;
-	const footer = `<footer class="blg-foot-site"><a class="blg-site-name" href="${brand}">${shop}</a><nav class="blg-foot-links">${links.replace(' class="is-on"', "").replace(' aria-current="page"', "")}<a href="${BLOG_PATH}/feed.xml" type="application/rss+xml">${esc(t("store.rss"))}</a></nav><small>© ${new Date().getFullYear()} ${shop}</small></footer>`;
+	const footer = `<footer class="blg-foot-site"><a class="blg-site-name" href="${brand}">${shop}</a><nav class="blg-foot-links">${links.replace(' class="is-on"', "").replace(' aria-current="page"', "")}<a href="${feed}" type="application/rss+xml">${esc(t("store.rss"))}</a></nav><small>© ${new Date().getFullYear()} ${shop}</small></footer>`;
 	return `<!doctype html><html lang="${esc(frame.lang)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${headTags(frame)}<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="${FONTS}"><style>${BLOG_CSS}</style></head><body class="blg">${header}<main>${body}</main>${band}${footer}</body></html>`;
 }
 
@@ -135,7 +137,7 @@ function menuLinks(frame: Frame): string {
 	}
 	const home = esc(frame.home);
 	const t = frame.t;
-	return `<a href="${home}">${esc(t("store.shop"))}</a><a class="is-on" href="${BLOG_PATH}" aria-current="page">${esc(t("store.title"))}</a><a href="${home}/track">${esc(t("store.track"))}</a>`;
+	return `<a href="${home}">${esc(t("store.shop"))}</a><a class="is-on" href="${esc(blogUrl(frame.blog, BLOG_PATH))}" aria-current="page">${esc(t("store.title"))}</a><a href="${home}/track">${esc(t("store.track"))}</a>`;
 }
 
 /**
