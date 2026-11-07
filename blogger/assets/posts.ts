@@ -7,6 +7,21 @@
 /** The address of the blog on the shop's online store. */
 export const BLOG_PATH = "/blogs";
 
+/**
+ * The full address of a blog path, on the blog's own address.
+ * The blog may be served at another address than `/blogs`
+ * (a host of its own), so every full link is built from it.
+ * @param blog The blog's full address, like `https://shop.test/blogs`.
+ * @param path A path that starts with `BLOG_PATH`.
+ * @returns The full address. The root of a host keeps its `/`.
+ */
+export function blogUrl(blog: string, path: string): string {
+	const base = blog.replace(/\/$/, "");
+	const rest = path.slice(BLOG_PATH.length);
+	const root = new URL(base).pathname === "/";
+	return root && !rest.startsWith("/") ? `${base}/${rest}` : base + rest;
+}
+
 /** How many posts one page of the blog shows. */
 export const PER_PAGE = 9;
 
