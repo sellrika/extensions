@@ -8,6 +8,7 @@ import {
 	postHtml,
 } from "../lib/render.ts";
 import { feedXml } from "../lib/feed.ts";
+import { blogUrl } from "./posts.ts";
 import {
 	checkPost,
 	cleanTags,
@@ -288,7 +289,9 @@ test("the store pages escape what a person typed and link posts, tags and pages"
 	);
 	// the posts to read next, and the shop as the author
 	expect(page).toContain('class="blg-card-link" href="/blogs/next"');
-	expect(page).toContain('<span class="blg-avatar" aria-hidden="true">MS</span>');
+	expect(page).toContain(
+		'<span class="blg-avatar" aria-hidden="true">MS</span>',
+	);
 	// the share links carry the post's full address, encoded
 	expect(page).toContain(
 		"https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fshop.test%2Fblogs%2Fa%2520b",
@@ -314,6 +317,7 @@ test("a post page tells search engines and AI search what it is", () => {
 		image: "https://shop.test/uploads/1/a.webp",
 		shop: "Main Shop",
 		home: "https://shop.test",
+		blog: "https://shop.test/blogs",
 		t: (key: string) => key,
 		type: "article",
 		logo: null,
@@ -341,7 +345,9 @@ test("a post page tells search engines and AI search what it is", () => {
 	expect(html).not.toContain("<script>x()");
 	// the head tags of an article
 	expect(html).toContain('<meta property="og:type" content="article">');
-	expect(html).toContain('<meta name="twitter:card" content="summary_large_image">');
+	expect(html).toContain(
+		'<meta name="twitter:card" content="summary_large_image">',
+	);
 	expect(html).toContain('<meta property="article:tag" content="Guides">');
 	expect(html).toContain("max-image-preview:large");
 	// a list names its posts with their full addresses
@@ -372,6 +378,7 @@ test("the feed carries whole posts with full addresses, and nothing can break it
 			title: "Blog · Main Shop",
 			description: "News",
 			home: "https://shop.test",
+			blog: "https://shop.test/blogs",
 			lang: "en",
 		},
 		[post],
@@ -399,6 +406,7 @@ test("the blog's own button link replaces the store button", () => {
 		image: null,
 		shop: "Main Shop",
 		home: "https://shop.test",
+		blog: "https://shop.test/blogs",
 		t: (key: string) => key,
 		type: "website",
 		logo: null,
@@ -428,6 +436,7 @@ test("the shop's own menu replaces Shop, Blog and Track order", () => {
 		image: null,
 		shop: "Main Shop",
 		home: "https://shop.test",
+		blog: "https://shop.test/blogs",
 		t: (key: string) => key,
 		type: "website",
 		logo: null,
@@ -459,4 +468,20 @@ test("the shop's own menu replaces Shop, Blog and Track order", () => {
 	frame.menu = [];
 	expect(body()).not.toContain('class="blg-nav"');
 	expect(body()).toContain("store.rss");
+});
+
+test("full links follow the blog's own address", () => {
+	// on the store: below /blogs
+	const store = "https://shop.test/blogs";
+	expect(blogUrl(store, "/blogs")).toBe("https://shop.test/blogs");
+	expect(blogUrl(store, "/blogs/tea")).toBe("https://shop.test/blogs/tea");
+	expect(blogUrl(store, "/blogs?page=2")).toBe(
+		"https://shop.test/blogs?page=2",
+	);
+	// on a host of its own: at the root, which keeps its "/"
+	const own = "https://blog.test";
+	expect(blogUrl(own, "/blogs")).toBe("https://blog.test/");
+	expect(blogUrl(own, "/blogs/tea")).toBe("https://blog.test/tea");
+	expect(blogUrl(own, "/blogs?page=2")).toBe("https://blog.test/?page=2");
+	expect(blogUrl(own, "/blogs/feed.xml")).toBe("https://blog.test/feed.xml");
 });

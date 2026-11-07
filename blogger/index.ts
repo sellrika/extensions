@@ -16,6 +16,7 @@ import type {
 } from "@extensions/types";
 import {
 	BLOG_PATH,
+	blogUrl,
 	checkPost,
 	isLive,
 	livePosts,
@@ -343,9 +344,9 @@ async function listPage(ctx: RouteContext, tag: string) {
 	frame.description = ctx.t("store.description", { shop: ctx.shop.name });
 	// the share picture of a list: the cover of its newest post
 	frame.image = fullUrl(ctx, items.find((post) => post.cover)?.cover ?? null);
-	frame.prev = page > 1 ? fullUrl(ctx, pathOf(base, page - 1)) : null;
-	frame.next = page < last ? fullUrl(ctx, pathOf(base, page + 1)) : null;
-	frame.data = listData(frame, items, `${ctx.store_url}${BLOG_PATH}`, (post) =>
+	frame.prev = page > 1 ? blogUrl(frame.blog, pathOf(base, page - 1)) : null;
+	frame.next = page < last ? blogUrl(frame.blog, pathOf(base, page + 1)) : null;
+	frame.data = listData(frame, items, blogUrl(frame.blog, BLOG_PATH), (post) =>
 		fullUrl(ctx, post.cover),
 	);
 	return ctx.storefront.page({ html: pageHtml(frame, body) });
@@ -359,14 +360,16 @@ async function listPage(ctx: RouteContext, tag: string) {
  * @returns The frame for `pageHtml`.
  */
 function frameOf(ctx: RouteContext, title: string, path: string): Frame {
+	const blog = blogOf(ctx);
 	return {
 		lang: ctx.locale,
 		title,
 		description: "",
-		url: `${ctx.store_url}${path}`,
+		url: blogUrl(blog, path),
 		image: null,
 		shop: ctx.shop.name,
 		home: ctx.store_url,
+		blog,
 		link: linkOf(ctx),
 		menu: menuOf(ctx),
 		t: ctx.t,
@@ -374,6 +377,16 @@ function frameOf(ctx: RouteContext, title: string, path: string): Frame {
 		logo: fullUrl(ctx, ctx.shop.logo),
 		data: [],
 	};
+}
+
+/**
+ * The blog's own full address on this request.
+ * On a host of its own it is that host, not the store's `/blogs`.
+ * @param ctx The route's context.
+ * @returns The address, with no `/` at the end.
+ */
+function blogOf(ctx: RouteContext): string {
+	return ctx.storefront?.url ?? `${ctx.store_url}${BLOG_PATH}`;
 }
 
 /**
@@ -454,6 +467,7 @@ export const publicRoutes: Routes = {
 				title: `${ctx.t("store.title")} · ${ctx.shop.name}`,
 				description: ctx.t("store.description", { shop: ctx.shop.name }),
 				home: ctx.store_url,
+				blog: blogOf(ctx),
 				lang: ctx.locale,
 			},
 			posts,
@@ -488,7 +502,7 @@ export const publicRoutes: Routes = {
 			modified: post.updated_at,
 			tags: post.tags,
 		};
-		frame.data = postData(frame, post, `${ctx.store_url}${BLOG_PATH}`);
+		frame.data = postData(frame, post, blogUrl(frame.blog, BLOG_PATH));
 		const body = postHtml(post, more, frame.url, ctx.shop.name, lookOf(ctx));
 		return ctx.storefront.page({ html: pageHtml(frame, body) });
 	},

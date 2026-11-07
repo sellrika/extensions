@@ -8,7 +8,13 @@
  * a warm paper background and one rust accent.
  */
 import type { Translate } from "@extensions/types";
-import { BLOG_PATH, slugify, type Meta, type Post } from "../assets/posts.ts";
+import {
+	BLOG_PATH,
+	blogUrl,
+	slugify,
+	type Meta,
+	type Post,
+} from "../assets/posts.ts";
 
 /** How many page numbers the pager shows around the open page. */
 const PAGER_SPAN = 2;
@@ -43,6 +49,8 @@ export type Frame = {
 	shop: string;
 	/** The address of the shop's online store. */
 	home: string;
+	/** The blog's own full address: `ctx.storefront.url`. */
+	blog: string;
 	/**
 	 * The blog's own button, from the settings. When set, the buttons
 	 * lead there and the links to the shop are left out (the store may
@@ -173,12 +181,14 @@ function headTags(frame: Frame): string {
 			`<meta property="article:author" content="${esc(frame.shop)}">`,
 		);
 		if (a.tags[0])
-			tags.push(`<meta property="article:section" content="${esc(a.tags[0])}">`);
+			tags.push(
+				`<meta property="article:section" content="${esc(a.tags[0])}">`,
+			);
 		for (const tag of a.tags)
 			tags.push(`<meta property="article:tag" content="${esc(tag)}">`);
 	}
 	tags.push(
-		`<link rel="alternate" type="application/rss+xml" title="${esc(`${frame.t("store.title")} · ${frame.shop}`)}" href="${esc(frame.home + BLOG_PATH)}/feed.xml">`,
+		`<link rel="alternate" type="application/rss+xml" title="${esc(`${frame.t("store.title")} · ${frame.shop}`)}" href="${esc(blogUrl(frame.blog, `${BLOG_PATH}/feed.xml`))}">`,
 	);
 	if (frame.prev) tags.push(`<link rel="prev" href="${esc(frame.prev)}">`);
 	if (frame.next) tags.push(`<link rel="next" href="${esc(frame.next)}">`);
@@ -287,14 +297,14 @@ export function postData(frame: Frame, post: Post, blogUrl: string): object[] {
  * page, and the breadcrumbs.
  * @param frame What the page is.
  * @param posts The posts of this page.
- * @param blogUrl The blog's full address.
+ * @param blogHome The blog's full address.
  * @param imageOf Gives a post's picture as a full address, or null.
  * @returns The schema.org objects.
  */
 export function listData(
 	frame: Frame,
 	posts: Meta[],
-	blogUrl: string,
+	blogHome: string,
 	imageOf: (post: Meta) => string | null,
 ): object[] {
 	return [
@@ -308,14 +318,10 @@ export function listData(
 			inLanguage: frame.lang,
 			publisher: shopData(frame),
 			blogPost: posts.map((post) =>
-				postingData(
-					post,
-					`${frame.home}${postPath(post)}`,
-					imageOf(post),
-				),
+				postingData(post, blogUrl(frame.blog, postPath(post)), imageOf(post)),
 			),
 		},
-		trailData(frame, blogUrl, null),
+		trailData(frame, blogHome, null),
 	];
 }
 
