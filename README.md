@@ -51,3 +51,7 @@ For the blog: `https://github.com/sellrika/extensions/releases/download/latest/b
 
 Raise `version` in the extension's `extension.json`, then merge to `main`.
 A version is released once. The `latest` link always holds the newest build.
+
+Keep `app_version` right: the Sellrika versions the extension runs on, like `">=1.1.4"`.
+Sellrika refuses a zip with no `app_version`, or one that does not fit the running app.
+Raise it when the extension starts to use something new of the app.
