@@ -18,7 +18,7 @@ Posts bring visitors from search engines.
 
 ## Pictures
 
-- **Thumbnail**: the picture on the blog list and on shared links. Best size: 1200 × 630.
+- **Thumbnail**: the picture on the blog list and on shared links. Best size: 1200 × 630. Click the box to pick a picture, or drag one onto it.
 - **Pictures in the body**: press the picture button, or paste or drop a picture. Click a picture to change its width, to put it left, in the middle or right, to move it up or down, to add a description (alt text) or a caption, or to delete it.
 - Text you paste keeps its headings, lists and links. It loses the colours and fonts of the page it came from.
 - Every picture is uploaded to the shop's own storage.
