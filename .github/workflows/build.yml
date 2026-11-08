@@ -8,6 +8,10 @@ name: Build extensions
 #   the newest build   …/releases/download/latest/<key>.zip
 #   one fixed version  …/releases/download/<key>-v<version>/<key>-<version>.zip
 #
+# And the update check (an extension's "update_url"):
+#   …/releases/download/latest/<key>.json = {version, url, notes}
+#   It names the newest version and the link of its fixed zip.
+#
 # A version is released once. To release a change, raise "version" in the
 # extension's extension.json. The "latest" link is replaced on every push.
 on:
@@ -87,8 +91,18 @@ jobs:
             tag="$key-v$version"
             if gh release view "$tag" >/dev/null 2>&1; then
               echo "$tag is already released: raise the version to release a change"
+              # a run that died between the release and its upload left no zip:
+              # the update file below would point at nothing
+              if ! gh release view "$tag" --json assets -q '.assets[].name' | grep -qx "$file.zip"; then
+                gh release upload "$tag" "$zip"
+              fi
             else
               gh release create "$tag" "$zip" --target "$GITHUB_SHA" \
                 --title "$key $version" --notes "Build of $key, version $version."
             fi
+            # what Sellrika's update check reads: only after the fixed zip exists
+            jq -n --arg version "$version" \
+              --arg url "https://github.com/${GITHUB_REPOSITORY}/releases/download/$tag/$file.zip" \
+              '{version: $version, url: $url, notes: ""}' > "$key.json"
+            gh release upload latest "$key.json" --clobber
           done
