@@ -61,6 +61,7 @@ export const PAGE_CSS = `
 .blg-cover{display:block;width:100%;aspect-ratio:1200/630;border-radius:10px;background:var(--muted);object-fit:cover}
 .blg-cover-none{display:flex;flex-direction:column;gap:.4rem;align-items:center;justify-content:center;border:1px dashed var(--border);background:none;color:var(--muted-foreground);font-size:.82rem;cursor:pointer}
 .blg-cover-none:hover{background:var(--muted)}
+.blg-cover-drag .blg-cover{outline:2px dashed var(--primary);outline-offset:2px}
 .blg-cover-actions{display:flex;gap:.5rem}
 .blg-cover-actions button{flex:1}
 .blg-taginput{display:flex;flex-wrap:wrap;gap:.35rem;align-items:center;border:1px solid var(--border);border-radius:var(--radius);padding:.4rem;cursor:text}

@@ -1,7 +1,7 @@
 {
 	"key": "blogger",
 	"name": "name",
-	"version": "1.1.8",
+	"version": "1.1.9",
 	"app_version": ">=1.1.4",
 	"update_url": "https://github.com/sellrika/extensions/releases/download/latest/blogger.json",
 	"description": "description",

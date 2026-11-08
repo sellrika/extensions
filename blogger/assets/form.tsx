@@ -168,10 +168,63 @@ function setCover(f: Form, url: string | null) {
  * Upload the picked file as the thumbnail.
  * @param f The form.
  */
-async function uploadCover(f: Form) {
+function onCoverPicked(f: Form) {
 	const picked = f.file.files?.[0];
 	f.file.value = "";
-	if (!picked) return;
+	if (picked) uploadCover(f, picked);
+}
+
+/**
+ * Let a dragged picture land on the thumbnail box.
+ * Without this the browser opens the file and leaves the page.
+ * @param f The form.
+ * @param e The drag event.
+ */
+function onCoverDragOver(f: Form, e: DragEvent) {
+	if (!e.dataTransfer?.types.includes("Files")) return;
+	e.preventDefault();
+	f.cover.classList.add("blg-cover-drag");
+}
+
+/**
+ * Take the highlight away when the drag leaves the box.
+ * A move onto a button inside the box does not count.
+ * @param f The form.
+ * @param e The drag event.
+ */
+function onCoverDragLeave(f: Form, e: DragEvent) {
+	if (f.cover.contains(e.relatedTarget as Node)) return;
+	f.cover.classList.remove("blg-cover-drag");
+}
+
+/**
+ * Upload the first dropped picture as the thumbnail.
+ * @param f The form.
+ * @param e The drop event.
+ */
+function onCoverDrop(f: Form, e: DragEvent) {
+	e.preventDefault();
+	f.cover.classList.remove("blg-cover-drag");
+	const files = Array.from(e.dataTransfer?.files ?? []);
+	const dropped = files.find(isPicture);
+	if (dropped) uploadCover(f, dropped);
+}
+
+/**
+ * Whether a file is a picture.
+ * @param file The file.
+ * @returns True for an image file.
+ */
+function isPicture(file: File) {
+	return file.type.startsWith("image/");
+}
+
+/**
+ * Upload a file as the thumbnail.
+ * @param f The form.
+ * @param picked The picture file.
+ */
+async function uploadCover(f: Form, picked: File) {
 	const result = await f.api.upload(picked);
 	if ("error" in result) return f.api.toast(result.error, "error");
 	setCover(f, result.url);
@@ -393,7 +446,10 @@ function build(s: State): Form {
 	f.title.oninput = () => onTitle(f);
 	f.slug.oninput = () => onSlug(f);
 	f.summary.oninput = () => onSummary(f);
-	f.file.onchange = () => uploadCover(f);
+	f.file.onchange = () => onCoverPicked(f);
+	f.cover.ondragover = (e) => onCoverDragOver(f, e);
+	f.cover.ondragleave = (e) => onCoverDragLeave(f, e);
+	f.cover.ondrop = (e) => onCoverDrop(f, e);
 	f.save.onclick = () => submit(f);
 	f.now.onclick = () => publishNow(f);
 	f.view.onclick = () =>
