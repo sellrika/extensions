@@ -59,3 +59,5 @@ Raise it when the extension starts to use something new of the app.
 Set `update_url` to `https://github.com/sellrika/extensions/releases/download/latest/<key>.json`.
 The build writes that file on every release. Sellrika reads it every 6 hours.
 When it names a newer version, **Admin › Global Extensions** shows an update badge and an **Update** button.
+A Sellrika that runs an older version with no `update_url` (Blogger 1.1.7 or older) never sees it.
+Import a version that has `update_url` once by link. From then on, updates show on their own.

@@ -91,6 +91,11 @@ jobs:
             tag="$key-v$version"
             if gh release view "$tag" >/dev/null 2>&1; then
               echo "$tag is already released: raise the version to release a change"
+              # a run that died between the release and its upload left no zip:
+              # the update file below would point at nothing
+              if ! gh release view "$tag" --json assets -q '.assets[].name' | grep -qx "$file.zip"; then
+                gh release upload "$tag" "$zip"
+              fi
             else
               gh release create "$tag" "$zip" --target "$GITHUB_SHA" \
                 --title "$key $version" --notes "Build of $key, version $version."
