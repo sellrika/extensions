@@ -55,3 +55,7 @@ A version is released once. The `latest` link always holds the newest build.
 Keep `app_version` right: the Sellrika versions the extension runs on, like `">=1.1.4"`.
 Sellrika refuses a zip with no `app_version`, or one that does not fit the running app.
 Raise it when the extension starts to use something new of the app.
+
+Set `update_url` to `https://github.com/sellrika/extensions/releases/download/latest/<key>.json`.
+The build writes that file on every release. Sellrika reads it every 6 hours.
+When it names a newer version, **Admin › Global Extensions** shows an update badge and an **Update** button.
